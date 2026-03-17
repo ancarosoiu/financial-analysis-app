@@ -12,5 +12,22 @@ services:
     volumes:
       - bd_pgdata:/var/lib/postgresql/data
 
+  backend:
+    build: ./backend
+    container_name: backend_django
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=bd
+      - DB_USER=bd_user
+      - DB_PASSWORD=bd_pass
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+
 volumes:
   bd_pgdata:

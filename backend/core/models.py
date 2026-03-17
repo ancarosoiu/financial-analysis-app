@@ -1,4 +1,5 @@
 from django.db import models
+from .utils import company_directory_path
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
@@ -21,13 +22,24 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.username}({self.get_role_display()})"
 
+class CompanyManager(models.Manager):
+    def for_user(self ,user):
+        if user.is_superuser or user.role == 'admin':
+            return self.all()
+        if user.role == 'analyst':
+            return self.filter(analyst=user)
+        if user.role == 'client':
+            return self.filter(owner=user)
+        return self.none()
+
 class Company(models.Model):
     name = models.CharField(max_length=255)
     cui = models.CharField(max_length=20, unique=True)
-    address = models.TextField(blank=True, null=True)  # util pentru raportul PDF
-    industry = models.CharField(max_length=100, blank=True, null=True)  # util pentru contextul ML
+    address = models.TextField(blank=True, null=True)
+    industry = models.CharField(max_length=100, blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     email_contact = models.EmailField(blank=True, null=True)
+    objects = CompanyManager()
 
     owner = models.OneToOneField(
         User,
@@ -65,7 +77,7 @@ class FinancialUpload(models.Model):
         ('rejected', 'Respins'),
     )
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='uploads')
-    file = models.FileField(upload_to='imports/%Y/%m/')
+    file = models.FileField(upload_to=company_directory_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
 
