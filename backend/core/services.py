@@ -162,7 +162,7 @@ def save_calculated_data(company, upload_instance, df_final):
                 retained_earnings=row['retained_earnings']
             )
 
-            kpi_data = {f'x{i}': row.get(f'x{i}', 0) for i in range(1, 65)}
+            kpi_data = {f'x{i}': row.get(f'x{i}', 0) for i in range(1, 66)}
 
             label, probability, importance = predict_risk(kpi_data)
 

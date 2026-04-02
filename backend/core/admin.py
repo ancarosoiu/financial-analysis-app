@@ -44,12 +44,12 @@ class KPISnapshotAdmin(admin.ModelAdmin):
             'description': 'Aceste valori sunt generate automat de modelul Random Forest / XGBoost.'
         }),
         ('Indicatori de Profitabilitate (Exemplu: X1, X7, X11...)', {
-            'classes': ('collapse',), # Această secțiune va fi restrânsă implicit
+            'classes': ('collapse',),
             'fields': ('x1', 'x7', 'x11', 'x13', 'x14', 'x18', 'x19', 'x22', 'x23', 'x24', 'x31', 'x35', 'x39', 'x42', 'x44', 'x48', 'x49', 'x56')
         }),
         ('Indicatori de Lichiditate și Capital de Lucru', {
             'classes': ('collapse',),
-            'fields': ('x3', 'x4', 'x5', 'x12', 'x16', 'x28', 'x32', 'x33', 'x36', 'x40', 'x43', 'x45', 'x46', 'x47', 'x50', 'x52', 'x55', 'x57', 'x60', 'x61', 'x62', 'x63')
+            'fields': ('x3', 'x4', 'x5', 'x12', 'x16', 'x28', 'x32', 'x33', 'x36', 'x40', 'x43', 'x45', 'x46', 'x47', 'x50', 'x52', 'x55', 'x57', 'x60', 'x61', 'x62', 'x63', 'x65')
         }),
         ('Indicatori de Îndatorare și Structură', {
             'classes': ('collapse',),
