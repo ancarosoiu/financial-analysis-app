@@ -1,14 +1,21 @@
 from django.urls import path
-from .views import CompanyListView, FinancialUploadView, ReviewUploadView, NotificationListView, MarkNotificationReadView, DashboardDataView
+from .views import CompanyListView, FinancialUploadView, ReviewUploadView, NotificationListView, \
+    MarkNotificationReadView, DashboardDataView, ClientUploadHistoryView, BaseReportListView, CreateReportRequestView, \
+    FulfillReportRequestView
 
 urlpatterns = [
-    path('firme/', CompanyListView.as_view(), name='lista-firme'),
-    path('upload/', FinancialUploadView.as_view(), name='upload-financiar'),
+    path('companies/', CompanyListView.as_view(), name='company-list'),
+    path('companies/<int:company_id>/dashboard/', DashboardDataView.as_view(), name='dashboard-data'),
 
-    path('review-upload/<int:upload_id>/', ReviewUploadView.as_view(), name='review-upload'),
+    path('uploads/', FinancialUploadView.as_view(), name='upload-create'),
+    path('companies/<int:company_id>/uploads/', ClientUploadHistoryView.as_view(), name='upload-history'),
+    path('uploads/<int:upload_id>/review/', ReviewUploadView.as_view(), name='upload-review'),
 
-    path('notificari/', NotificationListView.as_view(), name='lista-notificari'),
-    path('notificari/<int:pk>/read/', MarkNotificationReadView.as_view(), name='notificare-citita'),
+    path('companies/<int:company_id>/reports/standard/', BaseReportListView.as_view(), name='report-standard-list'),
+    path('companies/<int:company_id>/reports/request/', CreateReportRequestView.as_view(),
+         name='report-request-create'),
+    path('reports/requests/<int:request_id>/fulfill/', FulfillReportRequestView.as_view(), name='report-fulfill'),
 
-    path('dashboard/<int:company_id>/', DashboardDataView.as_view(), name='dashboard-data'),
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='notification-read'),
 ]

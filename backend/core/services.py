@@ -7,7 +7,8 @@ from django.db import transaction
 from django.db.models import Count
 
 from .ml_service import predict_risk
-from .models import FinancialUpload,FinancialStatement,KPISnapshot
+from .models import FinancialUpload, FinancialStatement, KPISnapshot, BaseReport
+
 
 def validate_and_parse_financial_excel(file_path, is_onboarding=True):
     try:
@@ -182,13 +183,14 @@ def save_calculated_data(company, upload_instance, df_final):
 
             label, probability, importance = predict_risk(kpi_data)
 
-            KPISnapshot.objects.create(
+            snapshot = KPISnapshot.objects.create(
                 statement=statement,
                 prediction_label=label,
                 bankruptcy_probability=probability,
                 feature_importance_data = importance,
                 **kpi_data
             )
+            BaseReport.objects.create(snapshot=snapshot)
 
         upload_instance.status = 'approved'
         upload_instance.processed_at = timezone.now()

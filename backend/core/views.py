@@ -3,8 +3,52 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Company, FinancialUpload, Notification
+from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot
 from .services import process_financial_upload
+
+class ClientUploadHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, company_id):
+        try:
+            company = Company.objects.for_user(request.user).get(id=company_id)
+            uploads = company.uploads.all().order_by('-uploaded_at')
+            data = [{
+                "id": u.id,
+                "data_incarcare": u.uploaded_at.strftime("%d/%m/%Y %H:%M"),
+                "status": u.status,
+                "nume_fisier": u.file.name.split('/')[-1],
+                "motiv_respingere": u.rejection_reason
+            } for u in uploads]
+            return Response(data)
+        except Company.DoesNotExist:
+            return Response({"error": "Acces interzis"}, status=403)
+
+
+class AnalystDashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'analyst' and not request.user.is_staff:
+            return Response({"error": "Acces interzis"}, status=403)
+
+        my_companies = Company.objects.filter(analyst=request.user)
+        pending_uploads = FinancialUpload.objects.filter(company__analyst=request.user, status='pending').count()
+        pending_reports = ReportRequest.objects.filter(analyst=request.user, status='pending').count()
+
+        high_risk_count = 0
+        for comp in my_companies:
+            last_snapshot = KPISnapshot.objects.filter(statement__company=comp).order_by(
+                '-statement__reporting_date').first()
+            if last_snapshot and last_snapshot.bankruptcy_probability > 50:
+                high_risk_count += 1
+
+        return Response({
+            "total_firme": my_companies.count(),
+            "importuri_noi": pending_uploads,
+            "cereri_rapoarte_noi": pending_reports,
+            "firme_risc_ridicat": high_risk_count
+        })
 
 class CompanyListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -191,3 +235,106 @@ class DashboardDataView(APIView):
             })
         except Company.DoesNotExist:
             return Response({"error": "Acces interzis"}, status=403)
+
+
+class BaseReportListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, company_id):
+        try:
+            company = Company.objects.for_user(request.user).get(id=company_id)
+
+            reports = BaseReport.objects.filter(snapshot__statement__company=company)
+
+            data = []
+            for rep in reports:
+                snapshot = rep.snapshot
+                data.append({
+                    "id": rep.id,
+                    "data_generare": rep.generated_at.strftime("%d/%m/%Y"),
+                    "data_bilant": snapshot.statement.reporting_date.strftime("%d/%m/%Y"),
+                    "probabilitate_faliment": f"{snapshot.bankruptcy_probability}%",
+                    "status_risc": snapshot.prediction_label,
+                    "pdf_url": rep.pdf_file.url if rep.pdf_file else None
+                })
+
+            return Response(data)
+
+        except Company.DoesNotExist:
+            return Response({"error": "Acces interzis sau firma nu există"}, status=403)
+
+
+class CreateReportRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, company_id):
+        user = request.user
+        client_message = request.data.get('message', '')
+
+        if not client_message:
+            return Response({"error": "Te rugăm să completezi cerințele tale pentru analist."}, status=400)
+
+        try:
+            company = Company.objects.for_user(user).get(id=company_id)
+
+            report_request = ReportRequest.objects.create(
+                company=company,
+                analyst=company.analyst,
+                client_message=client_message,
+                status='pending'
+            )
+
+            if company.analyst:
+                from .models import Notification
+                Notification.objects.create(
+                    sender=user,
+                    recipient=company.analyst,
+                    title="Solicitare Raport Nouă",
+                    message=f"Firma {company.name} a solicitat o analiză personalizată.",
+                    action_url=f"/analyst/requests/{report_request.id}"
+                )
+
+            return Response({
+                "message": "Solicitarea a fost trimisă cu succes către analistul tău!",
+                "request_id": report_request.id
+            }, status=201)
+
+        except Company.DoesNotExist:
+            return Response({"error": "Firma nu a fost găsită"}, status=404)
+
+
+class FulfillReportRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, request_id):
+        user = request.user
+
+        if user.role != 'analyst' and not user.is_staff:
+            return Response({"error": "Doar analiștii pot completa rapoarte."}, status=403)
+
+        try:
+            report_request = ReportRequest.objects.get(id=request_id, analyst=user)
+
+            if report_request.status == 'completed':
+                return Response({"error": "Acest raport a fost deja finalizat."}, status=400)
+
+            analyst_message = request.data.get('analyst_message')
+            recommendations = request.data.get('recommendations')
+
+            custom_report = CustomReport.objects.create(
+                request=report_request,
+                analyst_message=analyst_message,
+                expert_recommendations=recommendations,
+                extra_data_json=request.data.get('extra_data', {})
+            )
+
+            report_request.status = 'completed'
+            report_request.save()
+
+            return Response({
+                "message": "Raportul personalizat a fost salvat și trimis clientului!",
+                "report_id": custom_report.id
+            })
+
+        except ReportRequest.DoesNotExist:
+            return Response({"error": "Cererea nu a fost găsită sau nu ești asignat pe ea."}, status=404)
