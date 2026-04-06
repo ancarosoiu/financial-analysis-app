@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Count
 
 from .ml_service import predict_risk
 from .models import FinancialUpload,FinancialStatement,KPISnapshot
@@ -136,6 +138,20 @@ def calculate_kpis(df):
 
     return d
 
+User = get_user_model()
+def auto_assign_analyst(company):
+    analysts = User.objects.filter(role='analyst').annotate(
+        company_count=Count('assigned_companies')
+    ).order_by('company_count')
+
+    best_analyst = analysts.first()
+
+    if best_analyst:
+        company.analyst = best_analyst
+        company.save()
+        return True
+    return False
+
 #doar in cazul in care toate lunile sunt valide salveaza in bd
 def save_calculated_data(company, upload_instance, df_final):
     if upload_instance.status == 'approved':
@@ -180,6 +196,9 @@ def save_calculated_data(company, upload_instance, df_final):
 
         company.is_onboarded = True
         company.save()
+
+        if not company.analyst:
+            auto_assign_analyst(company)
 
 def process_financial_upload(upload_instance):
     try:

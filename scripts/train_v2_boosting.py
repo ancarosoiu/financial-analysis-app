@@ -5,7 +5,7 @@ import joblib
 from scipy.io import arff
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, confusion_matrix
 import shap
 import matplotlib.pyplot as plt
 
@@ -54,4 +54,19 @@ explainer = shap.TreeExplainer(model)
 shap_values = explainer.shap_values(X_test)
 joblib.dump(shap_values, os.path.join(MODEL_SAVE_PATH, 'shap_values_v2.joblib'))
 
-print(f"Analiza AUC: {roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]):.4f}")
+y_pred = model.predict(X_test)
+y_probs = model.predict_proba(X_test)[:, 1]
+
+acc = accuracy_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+auc = roc_auc_score(y_test, y_probs)
+
+print("-" * 30)
+print(f"REZULTATE FINALE MODEL V2:")
+print(f"Accuracy Score: {acc:.4f}")
+print(f"F1 Score:       {f1:.4f}")
+print(f"Analiza AUC:    {auc:.4f}")
+print("-" * 30)
+
+print("Matricea de Confuzie:")
+print(confusion_matrix(y_test, y_pred))
