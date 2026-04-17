@@ -1,52 +1,59 @@
 import pandas as pd
-import datetime
-import random
+from datetime import datetime, timedelta
 
 
-def generate_sample_excel(filename, scenario="healthy"):
+def generate_excel(filename, profile_type):
+    columns = [
+        'reporting_date', 'net_profit', 'ebit', 'sales_revenue',
+        'depreciation', 'operating_expenses', 'total_assets',
+        'current_assets', 'inventory', 'cash', 'total_liabilities',
+        'short_term_liabilities', 'equity', 'retained_earnings'
+    ]
+
     data = []
-    assets = 500000
-    liabilities = 150000
+    base_date = datetime(2024, 1, 1)
 
-    for month in range(1, 13):
-        report_date = datetime.date(2025, month, 28)
+    for i in range(12):
+        d = (base_date + timedelta(days=i * 30)).replace(day=1)
 
-        if scenario == "healthy":
-            profit = 5000 + (month * 1000)
-            liabilities -= 2000
-        elif scenario == "bankrupt":
-            profit = -10000 - (month * 5000)
-            liabilities += 15000
-        else:
-            profit = random.randint(-5000, 5000)
-            liabilities += random.randint(-1000, 5000)
+        if profile_type == "SANATOASA":
+            # Profit solid, lichiditate mare, capital propriu puternic
+            row = {
+                'reporting_date': d.strftime('%Y-%m-%d'),
+                'net_profit': 90000, 'ebit': 110000, 'sales_revenue': 700000,
+                'depreciation': 10000, 'operating_expenses': 500000,
+                'total_assets': 1500000, 'current_assets': 800000, 'inventory': 100000,
+                'cash': 300000, 'total_liabilities': 300000, 'short_term_liabilities': 150000,
+                'equity': 1200000, 'retained_earnings': 500000
+            }
+        elif profile_type == "MEDIE":
+            # Profit la limita, datorii egale cu activele circulante
+            row = {
+                'reporting_date': d.strftime('%Y-%m-%d'),
+                'net_profit': 5000, 'ebit': 8000, 'sales_revenue': 300000,
+                'depreciation': 3000, 'operating_expenses': 285000,
+                'total_assets': 600000, 'current_assets': 250000, 'inventory': 150000,
+                'cash': 15000, 'total_liabilities': 400000, 'short_term_liabilities': 250000,
+                'equity': 200000, 'retained_earnings': 40000
+            }
+        else:  # FALIMENT
+            # Pierderi masive, capital negativ, datorii sufocante
+            row = {
+                'reporting_date': d.strftime('%Y-%m-%d'),
+                'net_profit': -70000, 'ebit': -60000, 'sales_revenue': 120000,
+                'depreciation': 2000, 'operating_expenses': 180000,
+                'total_assets': 350000, 'current_assets': 60000, 'inventory': 40000,
+                'cash': 1000, 'total_liabilities': 500000, 'short_term_liabilities': 450000,
+                'equity': -150000, 'retained_earnings': -250000
+            }
+        data.append(row)
 
-        #lista de dictionare
-        data.append({
-            'reporting_date': report_date,
-            'net_profit': profit,
-            'ebit': profit * 1.2,
-            'sales_revenue': 100000 + (month * 2000),
-            'depreciation': 2000,
-            'operating_expenses': 80000,
-            'total_assets': assets + profit,
-            'current_assets': assets * 0.4,
-            'inventory': 40000,
-            'cash': 30000 if scenario == "healthy" else 1000,
-            'total_liabilities': liabilities,
-            'short_term_liabilities': liabilities * 0.7,
-            'equity': assets - liabilities,
-            'retained_earnings': 100000 + profit
-        })
-
-    #fiecare dictionar devine un rand din dataframe
-    #keys devin nume de coloane, values devin date din celule
     df = pd.DataFrame(data)
     df.to_excel(filename, index=False)
-    print(f"Generat: {filename} (Scenariu: {scenario})")
+    print(f"Generat: {filename}")
 
 
-if __name__ == "__main__":
-    generate_sample_excel("firma_buna.xlsx", scenario="healthy")
-    generate_sample_excel("firma_probleme.xlsx", scenario="bankrupt")
-    generate_sample_excel("firma_instabila.xlsx", scenario="unstable")
+# Generăm cele 3 fișiere
+generate_excel("firma_sanatoasa.xlsx", "SANATOASA")
+generate_excel("firma_risc_mediu.xlsx", "MEDIE")
+generate_excel("firma_falimentara.xlsx", "FALIMENT")
