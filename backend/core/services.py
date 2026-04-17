@@ -51,12 +51,9 @@ def calculate_kpis(df):
     d = df.copy()
 
     d['temp_month'] = pd.to_datetime(d['reporting_date']).dt.month
-
     flux_columns = ['net_profit', 'ebit', 'sales_revenue', 'depreciation', 'operating_expenses']
     for col in flux_columns:
-        d[col]=d[col]*(12/d['temp_month'])
-
-    d = d.drop(columns=['temp_month'])
+        d[col] = d[col] * (12 / d['temp_month'])
 
     working_capital = d['current_assets'] - d['short_term_liabilities']
     fixed_assets = d['total_assets'] - d['current_assets']
@@ -67,7 +64,7 @@ def calculate_kpis(df):
     d['x3'] = working_capital / d['total_assets']
     d['x4'] = d['current_assets'] / d['short_term_liabilities']
     d['x5'] = ((d['cash'] + d['current_assets'] - d['inventory'] - d['short_term_liabilities']) /
-               (d['operating_expenses'] - d['depreciation'])) * 365
+               (d['operating_expenses'] - d['depreciation'].replace(0, 0.001))) * 365
     d['x6'] = d['retained_earnings'] / d['total_assets']
     d['x7'] = d['ebit'] / d['total_assets']
     d['x8'] = d['equity'] / d['total_liabilities']
@@ -134,8 +131,11 @@ def calculate_kpis(df):
     d['x62'] = (d['short_term_liabilities'] * 365) / d['sales_revenue']
     d['x63'] = d['sales_revenue'] / d['short_term_liabilities']
     d['x64'] = d['sales_revenue'] / fixed_assets
+    d['x65'] = d['x6'] / d['x2'].replace(0, 0.001)
+    d['x66'] = d['x11'] / d['x3'].replace(0, 0.001)
 
-    d = d.replace([float('inf'), float('-inf')], 0).fillna(0)
+    d = d.replace([np.inf, -np.inf], np.nan)
+    d = d.fillna(0)
 
     return d
 
@@ -179,7 +179,7 @@ def save_calculated_data(company, upload_instance, df_final):
                 retained_earnings=row['retained_earnings']
             )
 
-            kpi_data = {f'x{i}': row.get(f'x{i}', 0) for i in range(1, 66)}
+            kpi_data = {f'x{i}': row.get(f'x{i}', 0) for i in range(1, 67)}
 
             label, probability, importance = predict_risk(kpi_data)
 
@@ -228,4 +228,7 @@ def process_financial_upload(upload_instance):
         upload_instance.rejection_reason = f"Eroare sistem: {str(e)}"
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
+        print(f"DEBUG EROARE REALA: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False, "A intervenit o eroare tehnica neprevazuta"

@@ -24,15 +24,17 @@ def predict_risk(data_dict):
         return "A fost detectata o eroare la preluarea modelului antrenat", 0.0, {}
 
     try:
-        val_x6 = float(data_dict.get('x6', 0))
-        val_x2 = float(data_dict.get('x2', 0))
-        data_dict['x65'] = val_x6 / val_x2 if val_x2 != 0 else 0.0
-    except (ValueError, TypeError):
-        data_dict['x65'] = 0.0
+        clean_data = {k: float(v) for k, v in data_dict.items() if k.startswith('x')}
+        clean_data['x65'] = clean_data.get('x6', 0) / clean_data.get('x2', 0.001)
+        clean_data['x66'] = clean_data.get('x11', 0) / clean_data.get('x3', 0.001)
 
-    local_columns = [f'x{i}' for i in range(1, 66)]
+    except (ValueError, TypeError, ZeroDivisionError):
+        clean_data['x65'] = 0.0
+        clean_data['x66'] = 0.0
 
-    data_table = pd.DataFrame([data_dict])[local_columns]
+    local_columns = [f'x{i}' for i in range(1, 67)]
+
+    data_table = pd.DataFrame([clean_data], columns=local_columns).fillna(0)
 
     model_result = model.predict(data_table)[0]
     model_prob = model.predict_proba(data_table)[0][1]

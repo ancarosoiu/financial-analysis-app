@@ -212,7 +212,9 @@ class KPISnapshot(models.Model):
     x62 = models.FloatField(null=True, blank=True, verbose_name="X62 [(Short-term liabilities * 365) / sales]")
     x63 = models.FloatField(null=True, blank=True, verbose_name="X63 (Sales / short-term liabilities)")
     x64 = models.FloatField(null=True, blank=True, verbose_name="X64 (Sales / fixed assets)")
-    x65 = models.FloatField(null=True, blank=True, verbose_name="X65 (Cash / total liabilities)")
+    x65 = models.FloatField(null=True, blank=True, verbose_name="X65 (Retained earnings / total liabilities)")
+    x66 = models.FloatField(null=True, blank=True,
+                            verbose_name="X66 (Net profit + Depr) / (Current Assets - Short Liab)")
 
     feature_importance_data = models.JSONField(
         null=True,
