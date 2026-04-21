@@ -3,8 +3,53 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import AllowAny
+from rest_framework import status, generics
 from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot
+from .serializers import RegisterClientSerializer, RegisterAnalystSerializer,MyTokenObtainPairSerializer
 from .services import process_financial_upload
+
+class RegisterClientView(generics.CreateAPIView):
+    serializer_class = RegisterClientSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(
+            {
+                "message": "Cont client creat cu succes.",
+                "username": user.username,
+                "role": "client",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RegisterAnalystView(generics.CreateAPIView):
+    serializer_class = RegisterAnalystSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(
+            {
+                "message": "Cont analist creat cu succes.",
+                "username": user.username,
+                "role": "analyst",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 class ClientUploadHistoryView(APIView):
     permission_classes = [IsAuthenticated]
