@@ -10,7 +10,12 @@ def handle_response(response):
         data = {"detail": "Răspuns invalid de la server."}
 
     if response.status_code >= 400:
-        message = data.get("detail") or data.get("message") or str(data)
+        message = (
+                data.get("detail")
+                or data.get("message")
+                or data.get("error")
+                or str(data)
+        )
         return {"success": False, "message": message, "errors": data}
 
     return {"success": True, "data": data}
@@ -69,6 +74,22 @@ def register_analyst(payload: dict):
         return {
             "success": False,
             "message": "Nu s-a putut realiza conexiunea cu backend-ul."
+        }
+
+def create_company(payload: dict, access_token: str):
+    url = f"{BASE_URL}/companies/"
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            headers=auth_headers(access_token),
+            timeout=10
+        )
+        return handle_response(response)
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Compania nu a putut fi creată."
         }
 
 
@@ -142,4 +163,61 @@ def get_companies(access_token: str):
         return {
             "success": False,
             "message": "Lista companiilor nu a putut fi încărcată."
+        }
+
+
+def get_analyst_pending_uploads(access_token: str):
+    url = f"{BASE_URL}/analyst/uploads/pending/"
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=10
+        )
+        return handle_response(response)
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Importurile în așteptare nu au putut fi încărcate."
+        }
+
+def get_analyst_uploads(access_token: str, status: str = "pending"):
+    url = f"{BASE_URL}/analyst/uploads/"
+    params = {
+        "status": status
+    }
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            params=params,
+            timeout=10
+        )
+        return handle_response(response)
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Importurile nu au putut fi încărcate."
+        }
+
+def review_upload(upload_id: int, decision: str, access_token: str, reason: str = ""):
+    url = f"{BASE_URL}/uploads/{upload_id}/review/"
+    payload = {
+        "decision": decision,
+        "reason": reason,
+    }
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            headers=auth_headers(access_token),
+            timeout=30
+        )
+        return handle_response(response)
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Importul nu a putut fi procesat."
         }

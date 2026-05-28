@@ -1,7 +1,12 @@
 import streamlit as st
 from session import init_session, logout
 from views.auth import render_auth_page
-from views.client import render_client_dashboard, render_client_onboarding
+from views.client import (
+    render_client_dashboard,
+    render_client_onboarding,
+    render_client_imports_page,
+    render_client_risk_page,
+)
 from views.analyst import render_analyst_dashboard
 from views.styles import load_global_styles
 
@@ -22,12 +27,19 @@ if st.session_state.authenticated:
 
         if st.session_state.role == "client":
             st.write("---")
+
             if st.button("Dashboard KPI", use_container_width=True):
                 st.session_state.page = (
                     "client_dashboard"
                     if st.session_state.is_onboarded
                     else "client_onboarding"
                 )
+
+            if st.button("Predicție ML / Risc", use_container_width=True):
+                st.session_state.page = "client_risk"
+
+            if st.button("Importuri", use_container_width=True):
+                st.session_state.page = "client_imports"
 
             if st.button("Onboarding / Upload", use_container_width=True):
                 st.session_state.page = "client_onboarding"
@@ -48,6 +60,10 @@ else:
     if st.session_state.role == "client":
         if st.session_state.page == "client_onboarding":
             render_client_onboarding()
+        elif st.session_state.page == "client_imports":
+            render_client_imports_page()
+        elif st.session_state.page == "client_risk":
+            render_client_risk_page()
         else:
             render_client_dashboard()
 

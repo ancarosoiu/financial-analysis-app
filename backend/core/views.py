@@ -6,9 +6,11 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
 from rest_framework import status, generics
-from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot
+from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot, MLModelVersion
 from .serializers import RegisterClientSerializer, RegisterAnalystSerializer,MyTokenObtainPairSerializer
-from .services import process_financial_upload
+from .services import process_financial_upload, auto_assign_analyst
+from django.db.models import Case, When, IntegerField
+from datetime import timedelta
 
 class RegisterClientView(generics.CreateAPIView):
     serializer_class = RegisterClientSerializer
@@ -95,6 +97,94 @@ class AnalystDashboardStatsView(APIView):
             "firme_risc_ridicat": high_risk_count
         })
 
+class AnalystPendingUploadsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'analyst' and not request.user.is_staff:
+            return Response({"error": "Acces interzis"}, status=403)
+
+        uploads = FinancialUpload.objects.filter(
+            status='pending'
+        ).select_related(
+            'company',
+            'company__owner',
+            'company__analyst'
+        ).order_by('-uploaded_at')
+
+        if request.user.role == 'analyst' and not request.user.is_staff:
+            uploads = uploads.filter(company__analyst=request.user)
+
+        data = []
+
+        for upload in uploads:
+            data.append({
+                "id": upload.id,
+                "company_id": upload.company.id,
+                "company_name": upload.company.name,
+                "cui": upload.company.cui,
+                "industry": upload.company.industry,
+                "client_username": upload.company.owner.username,
+                "file_name": upload.file.name.split('/')[-1],
+                "uploaded_at": upload.uploaded_at.strftime("%d/%m/%Y %H:%M"),
+                "status": upload.status,
+            })
+
+        return Response(data)
+
+class AnalystUploadsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'analyst' and not request.user.is_staff:
+            return Response({"error": "Acces interzis"}, status=403)
+
+        status_filter = request.query_params.get("status", "pending")
+
+        uploads = FinancialUpload.objects.select_related(
+            "company",
+            "company__owner",
+            "company__analyst",
+            "processed_by",
+        )
+
+        if request.user.role == "analyst" and not request.user.is_staff:
+            uploads = uploads.filter(company__analyst=request.user)
+
+        if status_filter != "all":
+            uploads = uploads.filter(status=status_filter)
+
+        uploads = uploads.annotate(
+            status_order=Case(
+                When(status="pending", then=0),
+                When(status="approved", then=1),
+                When(status="rejected", then=2),
+                default=3,
+                output_field=IntegerField(),
+            )
+        ).order_by("status_order", "uploaded_at")
+
+        data = []
+
+        for upload in uploads:
+            data.append({
+                "id": upload.id,
+                "company_id": upload.company.id,
+                "company_name": upload.company.name,
+                "cui": upload.company.cui,
+                "industry": upload.company.industry,
+                "client_username": upload.company.owner.username,
+                "analyst_username": upload.company.analyst.username if upload.company.analyst else None,
+                "file_name": upload.file.name.split("/")[-1],
+                "uploaded_at": upload.uploaded_at.strftime("%d/%m/%Y %H:%M"),
+                "status": upload.status,
+                "processed_by": upload.processed_by.username if upload.processed_by else None,
+                "processed_at": upload.processed_at.strftime("%d/%m/%Y %H:%M") if upload.processed_at else None,
+                "rejection_reason": upload.rejection_reason,
+            })
+
+        return Response(data)
+
 class CompanyListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -110,12 +200,74 @@ class CompanyListView(APIView):
                 "industrie": company.industry,
                 "adresa": company.address,
                 "email": company.email_contact,
+                "telefon": company.phone_number,
                 "status_onboarded": company.is_onboarded,
                 "analist_nume": company.analyst.username if company.analyst else "Neatribuit",
                 "owner_username": company.owner.username,
                 "data_inregistrare": company.created_at.strftime("%d/%m/%Y")
             })
+
         return Response(data)
+
+    def post(self, request):
+        if request.user.role != "client":
+            return Response(
+                {"error": "Doar utilizatorii de tip client pot crea o companie."},
+                status=403
+            )
+
+        existing_company = Company.objects.filter(owner=request.user).first()
+
+        if existing_company:
+            return Response(
+                {
+                    "message": "Clientul are deja o companie asociată.",
+                    "company_id": existing_company.id,
+                    "company_name": existing_company.name,
+                    "is_onboarded": existing_company.is_onboarded,
+                },
+                status=200
+            )
+
+        name = request.data.get("name")
+        cui = request.data.get("cui")
+        industry = request.data.get("industry", "")
+        address = request.data.get("address", "")
+        phone_number = request.data.get("phone_number", "")
+        email_contact = request.data.get("email_contact", "")
+
+        if not name or not cui:
+            return Response(
+                {"error": "Denumirea companiei și CUI-ul sunt obligatorii."},
+                status=400
+            )
+
+        if Company.objects.filter(cui=cui).exists():
+            return Response(
+                {"error": "Există deja o companie cu acest CUI."},
+                status=400
+            )
+
+        company = Company.objects.create(
+            name=name,
+            cui=cui,
+            industry=industry,
+            address=address,
+            phone_number=phone_number,
+            email_contact=email_contact,
+            owner=request.user,
+            is_onboarded=False,
+        )
+
+        return Response(
+            {
+                "message": "Compania a fost creată cu succes.",
+                "company_id": company.id,
+                "company_name": company.name,
+                "is_onboarded": company.is_onboarded,
+            },
+            status=201
+        )
 
 class FinancialUploadView(APIView):
     permission_classes = [IsAuthenticated]
@@ -127,12 +279,61 @@ class FinancialUploadView(APIView):
         company_id = request.data.get('company_id')
 
         if not file_obj or not company_id:
-            return Response({"error": "Lipsesc fișierul sau ID-ul firmei"}, status=400)
+            return Response(
+                {"error": "Lipsesc fișierul sau ID-ul firmei."},
+                status=400
+            )
 
         try:
             company = Company.objects.for_user(user).get(id=company_id)
         except Company.DoesNotExist:
-            return Response({"error": "Firma nu a fost găsită sau nu ai acces"}, status=403)
+            return Response(
+                {"error": "Firma nu a fost găsită sau nu ai acces."},
+                status=403
+            )
+
+        # 1. Nu permitem un import nou dacă există deja unul în așteptare.
+        pending_exists = FinancialUpload.objects.filter(
+            company=company,
+            status="pending"
+        ).exists()
+
+        if pending_exists:
+            return Response(
+                {
+                    "error": "Există deja un import în așteptare pentru această firmă. Așteaptă validarea lui înainte de a încărca alt fișier.",
+                    "code": "pending_import_exists"
+                },
+                status=409
+            )
+
+        # 2. Dacă firma este deja onboarded, permitem import nou doar după 30 zile
+        # de la ultimul import aprobat.
+        if company.is_onboarded:
+            last_approved_upload = FinancialUpload.objects.filter(
+                company=company,
+                status="approved",
+                processed_at__isnull=False
+            ).order_by("-processed_at").first()
+
+            if last_approved_upload:
+                today = timezone.localdate()
+                next_allowed_date = last_approved_upload.processed_at.date() + timedelta(days=30)
+
+                if today < next_allowed_date:
+                    return Response(
+                        {
+                            "error": f"Poți încărca un import nou abia după data de {next_allowed_date.strftime('%d/%m/%Y')}.",
+                            "code": "too_soon_after_last_approved_import",
+                            "next_allowed_date": next_allowed_date.strftime("%Y-%m-%d")
+                        },
+                        status=409
+                    )
+
+        # 3. Asignare automată analist dacă firma nu are încă.
+        if not company.analyst:
+            auto_assign_analyst(company)
+            company.refresh_from_db()
 
         upload = FinancialUpload.objects.create(
             company=company,
@@ -149,12 +350,15 @@ class FinancialUploadView(APIView):
                 action_url=f"/analyst/review/{upload.id}"
             )
 
-        return Response({
-            "message": "Fișierul a fost încărcat cu succes!",
-            "upload_id": upload.id,
-            "file_path": upload.file.name,
-            "status": upload.status
-        }, status=201)
+        return Response(
+            {
+                "message": "Fișierul a fost încărcat cu succes!",
+                "upload_id": upload.id,
+                "file_path": upload.file.name,
+                "status": upload.status
+            },
+            status=201
+        )
 
 class ReviewUploadView(APIView):
     permission_classes = [IsAuthenticated]
@@ -165,11 +369,37 @@ class ReviewUploadView(APIView):
         reason = request.data.get('reason', '')
 
         if user.role != 'analyst' and not user.is_staff:
-            return Response({"error": "Acces interzis"}, status=403)
+            return Response(
+                {"error": "Acces interzis. Doar analiștii pot procesa importuri."},
+                status=403
+            )
+
+        if decision not in ['approve', 'reject']:
+            return Response(
+                {"error": "Decizie invalidă. Folosește 'approve' sau 'reject'."},
+                status=400
+            )
 
         try:
-            upload = FinancialUpload.objects.get(id=upload_id)
+            upload = FinancialUpload.objects.select_related(
+                'company',
+                'company__owner',
+                'company__analyst'
+            ).get(id=upload_id)
+
             client = upload.company.owner
+
+            if upload.status != 'pending':
+                return Response(
+                    {"error": "Acest import a fost deja procesat."},
+                    status=400
+                )
+
+            if user.role == 'analyst' and upload.company.analyst != user:
+                return Response(
+                    {"error": "Nu ești analistul asignat acestei companii."},
+                    status=403
+                )
 
             if decision == 'approve':
                 success, message = process_financial_upload(upload)
@@ -178,21 +408,42 @@ class ReviewUploadView(APIView):
                     upload.status = 'approved'
                     upload.processed_by = user
                     upload.processed_at = timezone.now()
+                    upload.rejection_reason = None
                     upload.save()
 
                     Notification.objects.create(
                         sender=user,
                         recipient=client,
-                        title="Import Aprobat!",
-                        message=f"Datele pentru firma {upload.company.name} au fost validate. Dashboard-ul tău este acum activ.",
+                        title="Import aprobat",
+                        message=(
+                            f"Datele pentru firma {upload.company.name} au fost validate. "
+                            "Dashboard-ul tău este acum activ."
+                        ),
                         action_url="/dashboard"
                     )
 
-                    return Response({"message": "Fișier aprobat și date salvate!"})
-                else:
-                    return Response({"error": f"Procesarea a eșuat la validare: {message}"}, status=400)
+                    return Response(
+                        {
+                            "message": "Fișier aprobat și date salvate cu succes.",
+                            "upload_id": upload.id,
+                            "company_id": upload.company.id,
+                            "company_is_onboarded": upload.company.is_onboarded,
+                        },
+                        status=200
+                    )
 
-            elif decision == 'reject':
+                return Response(
+                    {"error": f"Procesarea a eșuat la validare: {message}"},
+                    status=400
+                )
+
+            if decision == 'reject':
+                if not reason:
+                    return Response(
+                        {"error": "Motivul respingerii este obligatoriu."},
+                        status=400
+                    )
+
                 upload.status = 'rejected'
                 upload.rejection_reason = reason
                 upload.processed_by = user
@@ -202,15 +453,27 @@ class ReviewUploadView(APIView):
                 Notification.objects.create(
                     sender=user,
                     recipient=client,
-                    title="Import Respins",
-                    message=f"Importul pentru {upload.company.name} a fost respins. Motiv: {reason}",
+                    title="Import respins",
+                    message=(
+                        f"Importul pentru firma {upload.company.name} a fost respins. "
+                        f"Motiv: {reason}"
+                    ),
                     action_url="/upload"
                 )
 
-                return Response({"message": "Import respins cu succes."})
+                return Response(
+                    {
+                        "message": "Import respins cu succes.",
+                        "upload_id": upload.id,
+                    },
+                    status=200
+                )
 
         except FinancialUpload.DoesNotExist:
-            return Response({"error": "Upload negăsit"}, status=404)
+            return Response(
+                {"error": "Upload-ul nu a fost găsit."},
+                status=404
+            )
 
 class NotificationListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -249,35 +512,99 @@ class MarkNotificationReadView(APIView):
 class DashboardDataView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def _safe_float(self, value):
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except Exception:
+            return None
+
     def get(self, request, company_id):
         try:
             company = Company.objects.for_user(request.user).get(id=company_id)
-            statements = company.statements.all().select_related('kpi_snapshot').order_by('-reporting_date')
+
+            statements = (
+                company.statements
+                .all()
+                .select_related("kpi_snapshot")
+                .order_by("reporting_date")
+            )
 
             data = []
+
             for s in statements:
-                kpi = getattr(s, 'kpi_snapshot', None)
+                kpi = getattr(s, "kpi_snapshot", None)
+
                 data.append({
                     "id": s.id,
                     "date": s.reporting_date.strftime("%Y-%m-%d"),
+
+                    # valori financiare principale
                     "profit": float(s.net_profit),
                     "venituri": float(s.sales_revenue),
-                    "probabilitate_faliment": kpi.bankruptcy_probability if kpi else None,
+                    "ebit": float(s.ebit),
+                    "cheltuieli_operationale": float(s.operating_expenses),
+                    "active_totale": float(s.total_assets),
+                    "active_curente": float(s.current_assets),
+                    "cash": float(s.cash),
+                    "stocuri": float(s.inventory),
+                    "datorii_totale": float(s.total_liabilities),
+                    "datorii_curente": float(s.short_term_liabilities),
+                    "capitaluri_proprii": float(s.equity),
+                    "profit_retinut": float(s.retained_earnings),
+
+                    # predicție ML
+                    "probabilitate_faliment": self._safe_float(kpi.bankruptcy_probability) if kpi else None,
                     "eticheta": kpi.prediction_label if kpi else None,
                     "importanta_indicatori": kpi.feature_importance_data if kpi else {},
+
+                    # KPI-uri relevante pentru dashboard
                     "kpis": {
-                        "lichiditate": kpi.x4 if kpi else None,
-                        "profitabilitate": kpi.x1 if kpi else None,
-                        "leverage": kpi.x2 if kpi else None,
+                        "rentabilitate_active": self._safe_float(kpi.x1) if kpi else None,      # net profit / total assets
+                        "grad_indatorare": self._safe_float(kpi.x2) if kpi else None,           # liabilities / assets
+                        "capital_lucru_active": self._safe_float(kpi.x3) if kpi else None,      # working capital / assets
+                        "lichiditate_curenta": self._safe_float(kpi.x4) if kpi else None,       # current assets / short liabilities
+                        "profit_retinut_active": self._safe_float(kpi.x6) if kpi else None,
+                        "ebit_active": self._safe_float(kpi.x7) if kpi else None,
+                        "capitaluri_datorii": self._safe_float(kpi.x8) if kpi else None,
+                        "rotatie_active": self._safe_float(kpi.x9) if kpi else None,
+                        "solvabilitate": self._safe_float(kpi.x10) if kpi else None,
+                        "profit_vanzari": self._safe_float(kpi.x23) if kpi else None,
+                        "log_active": self._safe_float(kpi.x29) if kpi else None,
+                        "capital_lucru": self._safe_float(kpi.x55) if kpi else None,
+
+                        # păstrăm și cheile vechi ca să nu stricăm frontend existent
+                        "lichiditate": self._safe_float(kpi.x4) if kpi else None,
+                        "profitabilitate": self._safe_float(kpi.x1) if kpi else None,
+                        "leverage": self._safe_float(kpi.x2) if kpi else None,
                     }
                 })
+
+            latest_snapshot = None
+            if data:
+                latest_snapshot = data[-1]
+
+            active_model = MLModelVersion.objects.filter(is_active=True).first()
+
+            model_info = None
+            if active_model:
+                model_info = {
+                    "name": active_model.name,
+                    "version": active_model.version,
+                    "accuracy": active_model.accuracy,
+                    "f1_score": active_model.f1_score,
+                }
 
             return Response({
                 "company_name": company.name,
                 "is_onboarded": company.is_onboarded,
                 "summary": company.financial_summary,
-                "history": data
+                "history": data,
+                "latest": latest_snapshot,
+                "model": model_info,
             })
+
         except Company.DoesNotExist:
             return Response({"error": "Acces interzis"}, status=403)
 

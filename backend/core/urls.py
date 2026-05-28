@@ -16,6 +16,8 @@ from .views import (
     RegisterClientView,
     RegisterAnalystView,
     AnalystDashboardStatsView,
+    AnalystPendingUploadsView,
+    AnalystUploadsView
 )
 
 urlpatterns = [
@@ -27,7 +29,10 @@ urlpatterns = [
 
     path('companies/', CompanyListView.as_view(), name='company-list'),
     path('companies/<int:company_id>/dashboard/', DashboardDataView.as_view(), name='dashboard-data'),
+
     path('analyst/dashboard-stats/', AnalystDashboardStatsView.as_view(), name='analyst-dashboard-stats'),
+    path('analyst/uploads/pending/', AnalystPendingUploadsView.as_view(), name='analyst-pending-uploads'),
+    path('analyst/uploads/', AnalystUploadsView.as_view(), name='analyst-uploads'),
 
     path('uploads/', FinancialUploadView.as_view(), name='upload-create'),
     path('companies/<int:company_id>/uploads/', ClientUploadHistoryView.as_view(), name='upload-history'),

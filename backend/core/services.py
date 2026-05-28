@@ -158,6 +158,22 @@ def save_calculated_data(company, upload_instance, df_final):
     if upload_instance.status == 'approved':
         raise ValidationError('Acest fisier deja a fost procesat')
 
+    existing_dates = set(
+        FinancialStatement.objects.filter(company=company)
+        .values_list("reporting_date", flat=True)
+    )
+
+    uploaded_dates = set(df_final["reporting_date"].tolist())
+
+    duplicate_dates = existing_dates.intersection(uploaded_dates)
+
+    if duplicate_dates:
+        duplicate_dates_str = ", ".join([str(d) for d in sorted(duplicate_dates)])
+        raise ValidationError(
+            f"Fișierul conține luni deja existente în sistem: {duplicate_dates_str}. "
+            "Încarcă doar luni noi."
+        )
+
     with transaction.atomic():
         for _, row in df_final.iterrows():
             statement = FinancialStatement.objects.create(
