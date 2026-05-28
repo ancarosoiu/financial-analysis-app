@@ -330,7 +330,7 @@ def load_global_styles():
         }
 
         /* =========================
-           DASHBOARD HELPERS
+           GENERIC DASHBOARD HELPERS
         ========================= */
         .metric-card {
             background: white;
@@ -405,17 +405,16 @@ def load_global_styles():
             box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
         }
 
-       /* =========================
+        /* =========================
            CLIENT KPI DASHBOARD
         ========================= */
-        
         .client-dash-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 1.6rem;
         }
-        
+
         .client-dash-title {
             color: #f8fafc;
             font-size: 2.55rem;
@@ -424,23 +423,23 @@ def load_global_styles():
             line-height: 1.05;
             margin-bottom: 0.55rem;
         }
-        
+
         .client-dash-subtitle {
             color: #8fa3c4;
             font-size: 1.02rem;
             font-weight: 500;
             letter-spacing: -0.01em;
         }
-        
+
         .client-user-pill {
-            background: rgba(255,255,255,0.96);
+            background: rgba(255, 255, 255, 0.96);
             color: #0f172a;
             border-radius: 999px;
             padding: 11px 18px;
             font-weight: 600;
             box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
         }
-        
+
         .dash-hero {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.28), transparent 32%),
@@ -458,7 +457,7 @@ def load_global_styles():
             justify-content: space-between;
             gap: 24px;
         }
-        
+
         .dash-hero-eyebrow {
             color: #93c5fd;
             font-size: 0.78rem;
@@ -467,7 +466,7 @@ def load_global_styles():
             letter-spacing: 0.08em;
             margin-bottom: 9px;
         }
-        
+
         .dash-hero-title {
             font-size: 2rem;
             font-weight: 800;
@@ -475,40 +474,39 @@ def load_global_styles():
             letter-spacing: -0.04em;
             margin-bottom: 8px;
         }
-        
+
         .dash-hero-subtitle {
             color: #cbd5e1;
             font-size: 0.98rem;
             font-weight: 500;
         }
-        
+
         .dash-risk-pill {
             border-radius: 999px;
             padding: 13px 18px;
             font-weight: 800;
             white-space: nowrap;
-            border: 1px solid rgba(255,255,255,0.20);
+            border: 1px solid rgba(255, 255, 255, 0.20);
         }
-        
+
         .dash-risk-pill.risk-low {
             background: rgba(34, 197, 94, 0.16);
             color: #4ade80;
             border-color: rgba(34, 197, 94, 0.35);
         }
-        
+
         .dash-risk-pill.risk-medium {
             background: rgba(249, 115, 22, 0.16);
             color: #fb923c;
             border-color: rgba(249, 115, 22, 0.35);
         }
-        
+
         .dash-risk-pill.risk-high {
             background: rgba(239, 68, 68, 0.16);
             color: #f87171;
             border-color: rgba(239, 68, 68, 0.35);
         }
-        
-        /* CARDURI KPI - DIMENSIUNE FIXĂ */
+
         .dash-card {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 30%),
@@ -519,6 +517,7 @@ def load_global_styles():
             height: 210px;
             min-height: 210px;
             max-height: 210px;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
                 0 0 34px rgba(37, 99, 235, 0.08);
@@ -527,8 +526,7 @@ def load_global_styles():
             display: flex;
             flex-direction: column;
         }
-        
-        /* bordură subtilă pe accent, fără pătrat decorativ */
+
         .dash-card::before {
             content: "";
             position: absolute;
@@ -537,23 +535,23 @@ def load_global_styles():
             pointer-events: none;
             border: 1px solid transparent;
         }
-        
+
         .dash-card.accent-blue::before {
             border-color: rgba(59, 130, 246, 0.28);
         }
-        
+
         .dash-card.accent-green::before {
             border-color: rgba(34, 197, 94, 0.28);
         }
-        
+
         .dash-card.accent-orange::before {
             border-color: rgba(249, 115, 22, 0.28);
         }
-        
+
         .dash-card.accent-purple::before {
             border-color: rgba(124, 58, 237, 0.28);
         }
-        
+
         .dash-card-header {
             display: flex;
             justify-content: space-between;
@@ -561,9 +559,9 @@ def load_global_styles():
             align-items: flex-start;
             position: relative;
             z-index: 2;
-            min-height: 34px;
+            min-height: 38px;
         }
-        
+
         .dash-card-title {
             color: #a7bad8;
             font-weight: 650;
@@ -573,7 +571,7 @@ def load_global_styles():
             max-width: 68%;
             line-height: 1.3;
         }
-        
+
         .dash-card-value {
             color: #f8fafc;
             font-weight: 800;
@@ -586,7 +584,7 @@ def load_global_styles():
             z-index: 2;
             white-space: nowrap;
         }
-        
+
         .dash-card-caption {
             color: #8fa3c4;
             font-size: 0.88rem;
@@ -597,8 +595,7 @@ def load_global_styles():
             margin-top: auto;
             min-height: 38px;
         }
-        
-        /* badge mic pentru creștere/scădere */
+
         .dash-delta {
             border-radius: 999px;
             padding: 6px 11px;
@@ -611,20 +608,19 @@ def load_global_styles():
             white-space: nowrap;
             flex-shrink: 0;
         }
-        
+
         .dash-delta.positive {
             background: rgba(34, 197, 94, 0.16);
             color: #4ade80;
             border: 1px solid rgba(34, 197, 94, 0.35);
         }
-        
+
         .dash-delta.negative {
             background: rgba(239, 68, 68, 0.16);
             color: #f87171;
             border: 1px solid rgba(239, 68, 68, 0.35);
         }
-        
-        /* CARD SCOR RISC */
+
         .dash-risk-card {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 34%),
@@ -634,11 +630,12 @@ def load_global_styles():
             padding: 28px;
             min-height: 390px;
             text-align: center;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
                 0 0 34px rgba(37, 99, 235, 0.10);
         }
-        
+
         .dash-risk-title {
             color: #f8fafc;
             font-weight: 800;
@@ -646,14 +643,14 @@ def load_global_styles():
             margin-bottom: 5px;
             letter-spacing: -0.025em;
         }
-        
+
         .dash-risk-subtitle {
             color: #8fa3c4;
             font-size: 0.9rem;
             font-weight: 500;
             margin-bottom: 26px;
         }
-        
+
         .dash-risk-circle {
             width: 175px;
             height: 175px;
@@ -666,41 +663,41 @@ def load_global_styles():
             border: 14px solid rgba(96, 165, 250, 0.20);
             background: #07111f;
         }
-        
+
         .dash-risk-circle.risk-low {
             border-color: #22c55e;
             box-shadow: 0 0 38px rgba(34, 197, 94, 0.18);
         }
-        
+
         .dash-risk-circle.risk-medium {
             border-color: #f97316;
             box-shadow: 0 0 38px rgba(249, 115, 22, 0.18);
         }
-        
+
         .dash-risk-circle.risk-high {
             border-color: #ef4444;
             box-shadow: 0 0 38px rgba(239, 68, 68, 0.18);
         }
-        
+
         .dash-risk-value {
             color: #ffffff;
             font-weight: 800;
             font-size: 2.1rem;
             letter-spacing: -0.04em;
         }
-        
+
         .dash-risk-label {
             color: #a7bad8;
             font-size: 0.85rem;
             font-weight: 700;
         }
-        
+
         .dash-risk-note {
             color: #8fa3c4;
             font-size: 0.9rem;
             line-height: 1.5;
         }
-        
+
         .dark-section-title {
             color: #f8fafc;
             font-size: 1.2rem;
@@ -711,7 +708,6 @@ def load_global_styles():
         /* =========================
            CLIENT RISK / ML PAGE
         ========================= */
-        
         .risk-page-hero {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.26), transparent 34%),
@@ -728,7 +724,7 @@ def load_global_styles():
             justify-content: space-between;
             gap: 24px;
         }
-        
+
         .risk-page-eyebrow {
             color: #93c5fd;
             font-size: 0.78rem;
@@ -737,7 +733,7 @@ def load_global_styles():
             letter-spacing: 0.08em;
             margin-bottom: 9px;
         }
-        
+
         .risk-page-title {
             color: #f8fafc;
             font-size: 2rem;
@@ -745,14 +741,14 @@ def load_global_styles():
             letter-spacing: -0.04em;
             margin-bottom: 8px;
         }
-        
+
         .risk-page-subtitle {
             color: #cbd5e1;
             font-size: 0.98rem;
             line-height: 1.5;
             max-width: 720px;
         }
-        
+
         .risk-page-score {
             width: 165px;
             height: 165px;
@@ -765,79 +761,112 @@ def load_global_styles():
             flex-direction: column;
             flex-shrink: 0;
         }
-        
+
         .risk-page-score.risk-low {
             border-color: #22c55e;
             box-shadow: 0 0 38px rgba(34, 197, 94, 0.18);
         }
-        
+
         .risk-page-score.risk-medium {
             border-color: #f97316;
             box-shadow: 0 0 38px rgba(249, 115, 22, 0.18);
         }
-        
+
         .risk-page-score.risk-high {
             border-color: #ef4444;
             box-shadow: 0 0 38px rgba(239, 68, 68, 0.18);
         }
-        
+
         .risk-page-score-value {
             color: white;
             font-size: 2rem;
             font-weight: 800;
             letter-spacing: -0.04em;
         }
-        
+
         .risk-page-score-label {
             color: #8fa3c4;
             font-size: 0.78rem;
             font-weight: 700;
             text-align: center;
         }
-        
-        /* CARDURI RISK PAGE - DIMENSIUNE FIXĂ */
+
         .risk-metric-card {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 30%),
                 linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 20px;
-            padding: 22px 22px 18px 22px;
-            height: 175px;
-            min-height: 175px;
-            max-height: 175px;
+            padding: 22px;
+            height: 178px;
+            min-height: 178px;
+            max-height: 178px;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
                 0 0 34px rgba(37, 99, 235, 0.08);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .risk-metric-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            pointer-events: none;
+            border: 1px solid transparent;
+        }
+
+        .risk-metric-card.accent-blue::before {
+            border-color: rgba(59, 130, 246, 0.30);
+        }
+
+        .risk-metric-card.accent-green::before {
+            border-color: rgba(34, 197, 94, 0.28);
+        }
+
+        .risk-metric-card.accent-orange::before {
+            border-color: rgba(249, 115, 22, 0.30);
+        }
+
+        .risk-metric-card.accent-purple::before {
+            border-color: rgba(124, 58, 237, 0.30);
+        }
+
         .risk-metric-title {
             color: #a7bad8;
             font-weight: 600;
             font-size: 0.95rem;
-            margin-bottom: 12px;
+            line-height: 1.3;
+            position: relative;
+            z-index: 1;
+            min-height: 24px;
         }
-        
+
         .risk-metric-value {
             color: #f8fafc;
             font-weight: 800;
             font-size: 1.9rem;
             letter-spacing: -0.04em;
-            margin-bottom: 10px;
-            white-space: nowrap;
             line-height: 1.1;
+            white-space: nowrap;
+            position: relative;
+            z-index: 1;
         }
-        
+
         .risk-metric-subtitle {
             color: #8fa3c4;
             font-size: 0.88rem;
             line-height: 1.4;
             min-height: 38px;
+            position: relative;
+            z-index: 1;
         }
-        
+
         .risk-explain-card {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
@@ -845,19 +874,21 @@ def load_global_styles():
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 22px;
             padding: 28px;
+            height: 390px;
             min-height: 390px;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.1);
+                0 0 34px rgba(37, 99, 235, 0.10);
         }
-        
+
         .risk-explain-title {
             color: #f8fafc;
             font-size: 1.25rem;
             font-weight: 800;
             margin-bottom: 18px;
         }
-        
+
         .risk-explain-main {
             display: inline-flex;
             padding: 10px 14px;
@@ -865,317 +896,251 @@ def load_global_styles():
             font-weight: 800;
             margin-bottom: 18px;
         }
-        
+
         .risk-explain-main.risk-low {
             background: rgba(34, 197, 94, 0.16);
             color: #4ade80;
             border: 1px solid rgba(34, 197, 94, 0.35);
         }
-        
+
         .risk-explain-main.risk-medium {
             background: rgba(249, 115, 22, 0.16);
             color: #fb923c;
             border: 1px solid rgba(249, 115, 22, 0.35);
         }
-        
+
         .risk-explain-main.risk-high {
             background: rgba(239, 68, 68, 0.16);
             color: #f87171;
             border: 1px solid rgba(239, 68, 68, 0.35);
         }
-        
+
         .risk-explain-text {
             color: #cbd5e1;
             font-size: 0.95rem;
             line-height: 1.6;
             margin-bottom: 18px;
         }
-        
+
         .risk-explain-note {
             color: #8fa3c4;
             font-size: 0.88rem;
             line-height: 1.5;
         }
-        
-        .feature-card {
+
+        /* =========================
+           LOCAL SHAP EXPLANATION
+        ========================= */
+        .shap-section-header {
             background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 32%),
                 linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 22px;
-            padding: 24px;
-            min-height: 390px;
+            padding: 24px 28px;
+            margin: 0.4rem 0 1.25rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 22px;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.1);
+                0 0 34px rgba(37, 99, 235, 0.10);
         }
-        
-        .feature-card-title {
-            color: #f8fafc;
-            font-size: 1.25rem;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-        
-        .feature-card-subtitle {
-            color: #8fa3c4;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin-bottom: 18px;
-        }
-        
-        .feature-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-        }
-        
-        .feature-row:last-child {
-            border-bottom: none;
-        }
-        
-        .feature-code {
-            color: #93c5fd;
-            font-weight: 800;
-            font-size: 0.9rem;
-        }
-        
-        .feature-name {
-            color: #cbd5e1;
-            font-size: 0.88rem;
-            margin-top: 3px;
-        }
-        
-        .feature-value {
-            color: #f8fafc;
-            font-weight: 800;
-        }
-        
-        .model-meta-card {
-            background: linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
-            border: 1px solid rgba(96, 165, 250, 0.25);
-            border-radius: 20px;
-            padding: 22px 24px;
-            margin-top: 1.2rem;
-            display: flex;
-            justify-content: space-between;
-            gap: 24px;
-            align-items: center;
-            box-shadow:
-                0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.08);
-        }
-        
-        .model-meta-title {
-            color: #f8fafc;
-            font-weight: 800;
-            font-size: 1.1rem;
-        }
-        
-        .model-meta-subtitle {
-            color: #8fa3c4;
-            margin-top: 4px;
-        }
-        
-        .model-meta-stats {
-            display: flex;
-            gap: 28px;
-        }
-        
-        .model-meta-stats span {
-            display: block;
-            color: #8fa3c4;
-            font-size: 0.8rem;
-            margin-bottom: 4px;
-        }
-        
-        .model-meta-stats strong {
-            color: #f8fafc;
-            font-size: 1.05rem;
-        }
-        
-        /* =========================
-           CLIENT RISK / ML PAGE
-        ========================= */
-        
-        .risk-page-hero {
-            background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.26), transparent 34%),
-                linear-gradient(135deg, #0b1730 0%, #102f76 100%);
-            border: 1px solid rgba(96, 165, 250, 0.25);
-            border-radius: 24px;
-            padding: 30px 34px;
-            margin-bottom: 1.6rem;
-            box-shadow:
-                0 24px 60px rgba(15, 23, 42, 0.30),
-                0 0 60px rgba(37, 99, 235, 0.14);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 24px;
-        }
-        
-        .risk-page-eyebrow {
-            color: #93c5fd;
-            font-size: 0.78rem;
+
+        .shap-section-eyebrow {
+            color: #60a5fa;
+            font-size: 0.76rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 9px;
-        }
-        
-        .risk-page-title {
-            color: #f8fafc;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.04em;
+            letter-spacing: 0.09em;
             margin-bottom: 8px;
         }
-        
-        .risk-page-subtitle {
-            color: #cbd5e1;
-            font-size: 0.98rem;
-            line-height: 1.5;
-            max-width: 720px;
-        }
-        
-        .risk-page-score {
-            width: 165px;
-            height: 165px;
-            border-radius: 999px;
-            background: #07111f;
-            border: 12px solid rgba(96, 165, 250, 0.20);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-        
-        .risk-page-score.risk-low {
-            border-color: #22c55e;
-            box-shadow: 0 0 38px rgba(34, 197, 94, 0.18);
-        }
-        
-        .risk-page-score.risk-medium {
-            border-color: #f97316;
-            box-shadow: 0 0 38px rgba(249, 115, 22, 0.18);
-        }
-        
-        .risk-page-score.risk-high {
-            border-color: #ef4444;
-            box-shadow: 0 0 38px rgba(239, 68, 68, 0.18);
-        }
-        
-        .risk-page-score-value {
-            color: white;
-            font-size: 2rem;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-        }
-        
-        .risk-page-score-label {
-            color: #8fa3c4;
-            font-size: 0.78rem;
-            font-weight: 700;
-            text-align: center;
-        }
-        
-        .risk-metric-card {
-            background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.15), transparent 30%),
-                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
-            border: 1px solid rgba(96, 165, 250, 0.25);
-            border-radius: 20px;
-            padding: 22px 22px 18px 22px;
-            min-height: 145px;
-            box-shadow:
-                0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.08);
-        }
-        
-        .risk-metric-title {
-            color: #a7bad8;
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 12px;
-        }
-        
-        .risk-metric-value {
+
+        .shap-section-title {
             color: #f8fafc;
+            font-size: 1.4rem;
             font-weight: 800;
-            font-size: 1.9rem;
-            letter-spacing: -0.04em;
-            margin-bottom: 10px;
+            letter-spacing: -0.03em;
+            margin-bottom: 6px;
         }
-        
-        .risk-metric-subtitle {
+
+        .shap-section-subtitle {
             color: #8fa3c4;
-            font-size: 0.88rem;
-            line-height: 1.4;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-width: 760px;
         }
-        
-        .risk-explain-card {
+
+        .shap-local-badge {
+            background: rgba(59, 130, 246, 0.16);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.34);
+            border-radius: 999px;
+            padding: 10px 15px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .shap-summary-card {
             background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.13), transparent 34%),
                 linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 22px;
-            padding: 28px;
-            min-height: 390px;
+            padding: 25px;
+            height: 430px;
+            min-height: 430px;
+            max-height: 430px;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.1);
+                0 0 34px rgba(37, 99, 235, 0.10);
         }
-        
-        .risk-explain-title {
+
+        .shap-summary-title {
             color: #f8fafc;
-            font-size: 1.25rem;
+            font-size: 1.22rem;
             font-weight: 800;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
         }
-        
-        .risk-explain-main {
-            display: inline-flex;
-            padding: 10px 14px;
-            border-radius: 999px;
-            font-weight: 800;
-            margin-bottom: 18px;
+
+        .shap-summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
         }
-        
-        .risk-explain-main.risk-low {
-            background: rgba(34, 197, 94, 0.16);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.35);
-        }
-        
-        .risk-explain-main.risk-medium {
-            background: rgba(249, 115, 22, 0.16);
-            color: #fb923c;
-            border: 1px solid rgba(249, 115, 22, 0.35);
-        }
-        
-        .risk-explain-main.risk-high {
-            background: rgba(239, 68, 68, 0.16);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.35);
-        }
-        
-        .risk-explain-text {
-            color: #cbd5e1;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 18px;
-        }
-        
-        .risk-explain-note {
+
+        .shap-summary-row span {
             color: #8fa3c4;
-            font-size: 0.88rem;
-            line-height: 1.5;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
-        
+
+        .shap-summary-row strong {
+            color: #f8fafc;
+            font-size: 0.95rem;
+            font-weight: 800;
+            text-align: right;
+        }
+
+        .shap-summary-info {
+            margin-top: 22px;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(96, 165, 250, 0.16);
+            border-radius: 14px;
+            padding: 15px;
+            color: #cbd5e1;
+            font-size: 0.88rem;
+            line-height: 1.55;
+        }
+
+        .shap-factor-card {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            border: 1px solid rgba(96, 165, 250, 0.25);
+            border-radius: 22px;
+            padding: 24px;
+            height: 485px;
+            min-height: 485px;
+            max-height: 485px;
+            box-sizing: border-box;
+            overflow: hidden;
+            box-shadow:
+                0 14px 36px rgba(0, 0, 0, 0.25),
+                0 0 34px rgba(37, 99, 235, 0.10);
+        }
+
+        .shap-factor-card-title {
+            color: #f8fafc;
+            font-size: 1.18rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+        }
+
+        .shap-factor-card-subtitle {
+            color: #8fa3c4;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-bottom: 16px;
+            min-height: 40px;
+        }
+
+        .shap-factor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            min-height: 68px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .shap-factor-row:last-child {
+            border-bottom: none;
+        }
+
+        .shap-factor-left {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .shap-factor-code {
+            color: #60a5fa;
+            font-weight: 800;
+            font-size: 0.76rem;
+            margin-bottom: 3px;
+        }
+
+        .shap-factor-name {
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 0.84rem;
+            line-height: 1.32;
+        }
+
+        .shap-factor-value {
+            color: #7187aa;
+            font-size: 0.76rem;
+            margin-top: 3px;
+        }
+
+        .shap-impact {
+            flex-shrink: 0;
+            border-radius: 999px;
+            padding: 7px 10px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            min-width: 72px;
+            text-align: center;
+        }
+
+        .shap-impact.risk {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.32);
+        }
+
+        .shap-impact.protective {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.32);
+        }
+
+        .shap-empty {
+            color: #8fa3c4;
+            font-size: 0.9rem;
+            margin-top: 22px;
+        }
+
+        /* Stil rămas compatibil dacă încă există vreun bloc vechi feature-card */
         .feature-card {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 34%),
@@ -1183,26 +1148,28 @@ def load_global_styles():
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 22px;
             padding: 24px;
+            height: 390px;
             min-height: 390px;
+            box-sizing: border-box;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.1);
+                0 0 34px rgba(37, 99, 235, 0.10);
         }
-        
+
         .feature-card-title {
             color: #f8fafc;
             font-size: 1.25rem;
             font-weight: 800;
             margin-bottom: 6px;
         }
-        
+
         .feature-card-subtitle {
             color: #8fa3c4;
             font-size: 0.9rem;
             line-height: 1.5;
             margin-bottom: 18px;
         }
-        
+
         .feature-row {
             display: flex;
             justify-content: space-between;
@@ -1210,30 +1177,32 @@ def load_global_styles():
             padding: 12px 0;
             border-bottom: 1px solid rgba(148, 163, 184, 0.14);
         }
-        
+
         .feature-row:last-child {
             border-bottom: none;
         }
-        
+
         .feature-code {
             color: #93c5fd;
             font-weight: 800;
             font-size: 0.9rem;
         }
-        
+
         .feature-name {
             color: #cbd5e1;
             font-size: 0.88rem;
             margin-top: 3px;
         }
-        
+
         .feature-value {
             color: #f8fafc;
             font-weight: 800;
         }
-        
+
         .model-meta-card {
-            background: linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
             border: 1px solid rgba(96, 165, 250, 0.25);
             border-radius: 20px;
             padding: 22px 24px;
@@ -1246,30 +1215,30 @@ def load_global_styles():
                 0 14px 36px rgba(0, 0, 0, 0.25),
                 0 0 34px rgba(37, 99, 235, 0.08);
         }
-        
+
         .model-meta-title {
             color: #f8fafc;
             font-weight: 800;
             font-size: 1.1rem;
         }
-        
+
         .model-meta-subtitle {
             color: #8fa3c4;
             margin-top: 4px;
         }
-        
+
         .model-meta-stats {
             display: flex;
             gap: 28px;
         }
-        
+
         .model-meta-stats span {
             display: block;
             color: #8fa3c4;
             font-size: 0.8rem;
             margin-bottom: 4px;
         }
-        
+
         .model-meta-stats strong {
             color: #f8fafc;
             font-size: 1.05rem;
@@ -1674,7 +1643,7 @@ def load_global_styles():
             border: 1px solid #fde68a;
             border-radius: 16px;
             padding: 15px 16px;
-            margin: 18px 0 18px 0;
+            margin: 18px 0;
         }
 
         .review-warning-title {
@@ -1761,14 +1730,36 @@ def load_global_styles():
                 max-width: 100%;
             }
 
-            .uploads-table-header {
+            .uploads-table-header,
+            .client-imports-table-header {
                 display: none;
             }
 
-            .client-dashboard-hero,
-            .dash-hero {
+            .client-dash-header,
+            .dash-hero,
+            .risk-page-hero,
+            .shap-section-header,
+            .model-meta-card {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            .risk-page-score {
+                margin-top: 12px;
+            }
+
+            .model-meta-stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .dash-card,
+            .risk-metric-card,
+            .risk-explain-card,
+            .shap-summary-card,
+            .shap-factor-card {
+                height: auto;
+                max-height: none;
             }
         }
         </style>

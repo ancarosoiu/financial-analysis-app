@@ -698,78 +698,153 @@ def _risk_page_level(risk):
         "Firma prezintă semnale financiare care necesită atenție rapidă.",
     )
 
-
 def _indicator_label(indicator_code):
     labels = {
-        "x1": "Rentabilitate active",
-        "x2": "Grad de îndatorare",
-        "x3": "Capital de lucru / active",
-        "x4": "Lichiditate curentă",
-        "x5": "Cash-flow operațional estimat",
-        "x6": "Profit reținut / active",
-        "x7": "EBIT / active",
-        "x8": "Capitaluri proprii / datorii",
-        "x9": "Rotația activelor",
-        "x10": "Solvabilitate",
-        "x11": "Profit + amortizare / datorii",
-        "x12": "Profit / datorii curente",
-        "x13": "Profit + amortizare / vânzări",
-        "x14": "Profit + EBIT / active",
-        "x15": "Datorii raportate la cash-flow",
-        "x16": "Cash-flow / datorii totale",
-        "x17": "Active / datorii",
-        "x18": "Profit / active",
-        "x19": "Profit / vânzări",
-        "x20": "Stocuri raportate la vânzări",
-        "x21": "Evoluție vânzări",
-        "x22": "EBIT / active",
+        "x1": "Profit net / active totale",
+        "x2": "Datorii totale / active totale",
+        "x3": "Capital de lucru / active totale",
+        "x4": "Active curente / datorii curente",
+        "x5": "Lichiditate defensivă ajustată",
+        "x6": "Profit reținut / active totale",
+        "x7": "EBIT / active totale",
+        "x8": "Capitaluri proprii / datorii totale",
+        "x9": "Vânzări / active totale",
+        "x10": "Capitaluri proprii / active totale",
+        "x11": "Rezultat brut ajustat / active",
+        "x12": "Profit brut / datorii curente",
+        "x13": "Profit brut + amortizare / vânzări",
+        "x14": "Profit brut + dobânzi / active",
+        "x15": "Datorii raportate la fluxul brut",
+        "x16": "Profit brut + amortizare / datorii",
+        "x17": "Active totale / datorii totale",
+        "x18": "Profit brut / active totale",
+        "x19": "Profit brut / vânzări",
+        "x20": "Durata rotației stocurilor",
+        "x21": "Evoluția vânzărilor",
+        "x22": "Profit operațional / active",
         "x23": "Marja profitului net",
-        "x24": "Profit pe active",
-        "x25": "Capital ajustat / active",
-        "x26": "Profit + amortizare / datorii",
-        "x27": "EBIT / cheltuieli operaționale",
+        "x24": "Profit brut cumulat / active",
+        "x25": "Capitaluri ajustate / active",
+        "x26": "Profit net + amortizare / datorii",
+        "x27": "Profit operațional / cheltuieli financiare",
         "x28": "Capital de lucru / active fixe",
         "x29": "Dimensiunea firmei",
         "x30": "Datorii nete / vânzări",
-        "x31": "Profit + EBIT / vânzări",
-        "x32": "Datorii curente raportate la costuri",
-        "x33": "Datorii curente / datorii totale",
-        "x34": "Cheltuieli operaționale / datorii",
-        "x35": "Profit operațional / active",
-        "x36": "Vânzări / active",
-        "x37": "Active curente ajustate / datorii lungi",
+        "x31": "Profit brut + dobânzi / vânzări",
+        "x32": "Datorii curente / costul vânzărilor",
+        "x33": "Cheltuieli operaționale / datorii curente",
+        "x34": "Cheltuieli operaționale / datorii totale",
+        "x35": "Profit din vânzări / active",
+        "x36": "Vânzări / active totale",
+        "x37": "Active curente fără stocuri / datorii lungi",
         "x38": "Capital permanent / active",
-        "x39": "Profit pe vânzări",
+        "x39": "Profit din vânzări / vânzări",
         "x40": "Lichiditate rapidă ajustată",
-        "x41": "Presiune datorii / cash-flow",
+        "x41": "Presiunea datoriilor asupra rezultatului operațional",
         "x42": "Profit operațional / vânzări",
-        "x43": "Creanțe raportate la vânzări",
-        "x44": "Cash-flow / datorii",
-        "x45": "Profit / stocuri",
+        "x43": "Rotația creanțelor și stocurilor",
+        "x44": "Durata încasării creanțelor",
+        "x45": "Profit net / stocuri",
         "x46": "Active curente fără stocuri / datorii curente",
-        "x47": "Viteză rotație stocuri",
-        "x48": "EBITDA / active",
+        "x47": "Durata stocurilor în costul vânzărilor",
+        "x48": "EBITDA / active totale",
         "x49": "EBITDA / vânzări",
         "x50": "Active curente / datorii totale",
-        "x51": "Datorii curente / active",
-        "x52": "Datorii curente raportate la costuri",
+        "x51": "Datorii curente / active totale",
+        "x52": "Datorii curente / costul vânzărilor",
         "x53": "Capitaluri proprii / active fixe",
         "x54": "Capital permanent / active fixe",
         "x55": "Capital de lucru",
         "x56": "Marja brută",
         "x57": "Capital de lucru ajustat",
-        "x58": "Cheltuieli / vânzări",
-        "x59": "Datorii pe termen lung / capital",
+        "x58": "Costuri totale / vânzări",
+        "x59": "Datorii pe termen lung / capitaluri proprii",
         "x60": "Vânzări / stocuri",
-        "x61": "Vânzări / active curente",
+        "x61": "Vânzări / creanțe",
         "x62": "Datorii curente / vânzări",
         "x63": "Vânzări / datorii curente",
         "x64": "Vânzări / active fixe",
-        "x65": "Profit reținut / datorii",
-        "x66": "Cash-flow raportat la capital de lucru",
+        "x65": "Profit reținut / datorii totale",
+        "x66": "Cash-flow raportat la capitalul de lucru",
     }
 
     return labels.get(indicator_code, indicator_code)
+
+def _get_shap_rows(shap_data, key):
+    if not isinstance(shap_data, dict):
+        return []
+
+    if shap_data.get("method") != "local_shap":
+        return []
+
+    rows = shap_data.get(key, [])
+
+    if not isinstance(rows, list):
+        return []
+
+    return rows
+
+
+def _fmt_shap_value(value):
+    value = _safe_float(value)
+    sign = "+" if value > 0 else ""
+    return f"{sign}{value:.4f}"
+
+
+def _fmt_feature_value(value):
+    value = _safe_float(value)
+
+    if abs(value) >= 1000:
+        return f"{value:,.0f}"
+
+    return f"{value:.4f}"
+
+
+def _shap_direction_text(direction):
+    if direction == "increase_risk":
+        return "Crește riscul"
+    if direction == "reduce_risk":
+        return "Reduce riscul"
+    return "Impact neutru"
+
+
+def _render_shap_factor_card(title, subtitle, factors, card_type):
+    if not factors:
+        return f"""
+        <div class="shap-factor-card">
+            <div class="shap-factor-card-title">{title}</div>
+            <div class="shap-factor-card-subtitle">{subtitle}</div>
+            <div class="shap-empty">Nu există factori relevanți în această categorie.</div>
+        </div>
+        """
+
+    html = f"""
+    <div class="shap-factor-card">
+        <div class="shap-factor-card-title">{title}</div>
+        <div class="shap-factor-card-subtitle">{subtitle}</div>
+    """
+
+    for factor in factors[:5]:
+        indicator = factor.get("indicator", "")
+        name = _indicator_label(indicator)
+        feature_value = _fmt_feature_value(factor.get("feature_value"))
+        shap_value = _fmt_shap_value(factor.get("shap_value"))
+
+        html += f"""
+        <div class="shap-factor-row">
+            <div class="shap-factor-left">
+                <div class="shap-factor-code">{indicator.upper()}</div>
+                <div class="shap-factor-name">{name}</div>
+                <div class="shap-factor-value">Valoare indicator: {feature_value}</div>
+            </div>
+            <div class="shap-impact {card_type}">
+                {shap_value}
+            </div>
+        </div>
+        """
+
+    html += "</div>"
+    return html
 
 
 def render_dashboard_card(title, value, subtitle, delta=None, accent="blue"):
@@ -1096,56 +1171,139 @@ def render_client_risk_page():
 
     importances = latest.get("importanta_indicatori", {})
 
-    if isinstance(importances, dict) and importances:
-        imp_df = pd.DataFrame(
+    shap_data = latest.get("importanta_indicatori", {}) or {}
+
+    top_factors = _get_shap_rows(shap_data, "top_factors")
+    risk_factors = _get_shap_rows(shap_data, "risk_factors")
+    protective_factors = _get_shap_rows(shap_data, "protective_factors")
+
+    st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
+
+    if shap_data.get("method") == "local_shap" and top_factors:
+        st.html(
+            f"""
+            <div class="shap-section-header">
+                <div>
+                    <div class="shap-section-eyebrow">Explicație individuală a predicției</div>
+                    <div class="shap-section-title">Analiză SHAP locală pentru {latest.get("date")}</div>
+                    <div class="shap-section-subtitle">
+                        Factorii de mai jos explică predicția pentru perioada selectată,
+                        nu importanța generală a modelului pentru toate firmele.
+                    </div>
+                </div>
+                <div class="shap-local-badge">SHAP local</div>
+            </div>
+            """
+        )
+
+        shap_chart_df = pd.DataFrame(
             [
                 {
-                    "Indicator": key,
-                    "Denumire": _indicator_label(key),
-                    "Importanță": value,
+                    "Indicator": factor.get("indicator", "").upper(),
+                    "Denumire": _indicator_label(factor.get("indicator", "")),
+                    "Impact SHAP": _safe_float(factor.get("shap_value")),
+                    "Sens": _shap_direction_text(factor.get("direction")),
                 }
-                for key, value in importances.items()
+                for factor in top_factors
             ]
-        ).sort_values("Importanță", ascending=True)
+        ).sort_values("Impact SHAP", ascending=True)
 
-        left_imp, right_imp = st.columns([1.35, 1], gap="large")
+        left_shap, right_shap = st.columns([1.35, 1], gap="large")
 
-        with left_imp:
-            fig_imp = px.bar(
-                imp_df,
-                x="Importanță",
+        with left_shap:
+            fig_shap = px.bar(
+                shap_chart_df,
+                x="Impact SHAP",
                 y="Denumire",
+                color="Sens",
                 orientation="h",
-                title="Top factori care au influențat predicția",
+                title="Factorii care au influențat predicția curentă",
+                color_discrete_map={
+                    "Crește riscul": "#ef4444",
+                    "Reduce riscul": "#22c55e",
+                    "Impact neutru": "#64748b",
+                },
             )
-            _apply_dark_chart_layout(fig_imp, height=390)
-            st.plotly_chart(fig_imp, use_container_width=True, config=PLOTLY_CONFIG)
 
-        with right_imp:
-            top_rows = imp_df.sort_values("Importanță", ascending=False).head(5)
+            _apply_dark_chart_layout(fig_shap, height=430)
 
-            html = """
-<div class="feature-card">
-    <div class="feature-card-title">Feature importance</div>
-    <div class="feature-card-subtitle">
-        Ce indicatori au contat cel mai mult în decizia modelului.
-    </div>
-"""
+            fig_shap.update_layout(
+                legend_title_text="Efect asupra riscului",
+            )
 
-            for _, row in top_rows.iterrows():
-                html += f"""
-    <div class="feature-row">
-        <div>
-            <div class="feature-code">{row["Indicator"]}</div>
-            <div class="feature-name">{row["Denumire"]}</div>
-        </div>
-        <div class="feature-value">{row["Importanță"]}</div>
-    </div>
-"""
+            fig_shap.update_traces(
+                marker_line_width=0,
+            )
 
-            html += "</div>"
+            st.plotly_chart(
+                fig_shap,
+                use_container_width=True,
+                config=PLOTLY_CONFIG,
+            )
 
-            st.html(html)
+        with right_shap:
+            base_value = shap_data.get("base_value")
+            explained_class = shap_data.get("explained_class", "FALIMENT")
+
+            st.html(
+                f"""
+                <div class="shap-summary-card">
+                    <div class="shap-summary-title">Cum se citește explicația?</div>
+
+                    <div class="shap-summary-row">
+                        <span>Clasa explicată</span>
+                        <strong>{explained_class}</strong>
+                    </div>
+
+                    <div class="shap-summary-row">
+                        <span>Probabilitate estimată</span>
+                        <strong>{_fmt_percent_direct(risk)}</strong>
+                    </div>
+
+                    <div class="shap-summary-row">
+                        <span>Scor de bază SHAP</span>
+                        <strong>{_fmt_shap_value(base_value)}</strong>
+                    </div>
+
+                    <div class="shap-summary-info">
+                        Valorile pozitive împing predicția către risc de faliment.
+                        Valorile negative reduc scorul de risc.
+                        Impactul SHAP este exprimat în scorul intern al modelului,
+                        nu în puncte procentuale.
+                    </div>
+                </div>
+                """
+            )
+
+        st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
+
+        risk_col, protection_col = st.columns(2, gap="large")
+
+        with risk_col:
+            st.html(
+                _render_shap_factor_card(
+                    "Factori care cresc riscul",
+                    "Indicatori care au împins predicția către clasa FALIMENT.",
+                    risk_factors,
+                    "risk",
+                )
+            )
+
+        with protection_col:
+            st.html(
+                _render_shap_factor_card(
+                    "Factori care reduc riscul",
+                    "Indicatori care au diminuat scorul de risc estimat.",
+                    protective_factors,
+                    "protective",
+                )
+            )
+
+    else:
+        st.info(
+            "Pentru această perioadă nu există încă o explicație SHAP locală. "
+            "Aceasta va apărea pentru importurile procesate după activarea noii logici ML."
+        )
 
     model_name = model_info.get("name", "Model ML activ")
     model_version = model_info.get("version", "N/A")
@@ -1438,30 +1596,43 @@ def render_client_dashboard():
 
     st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
 
-    importances = latest.get("importanta_indicatori", {})
+    shap_data = latest.get("importanta_indicatori", {}) or {}
+    top_factors = _get_shap_rows(shap_data, "top_factors")
 
-    if isinstance(importances, dict) and importances:
-        imp_df = pd.DataFrame(
+    if shap_data.get("method") == "local_shap" and top_factors:
+        preview_df = pd.DataFrame(
             [
                 {
-                    "Indicator": key,
-                    "Denumire": _indicator_label(key),
-                    "Importanță": value,
+                    "Indicator": _indicator_label(factor.get("indicator", "")),
+                    "Impact SHAP": _safe_float(factor.get("shap_value")),
+                    "Sens": _shap_direction_text(factor.get("direction")),
                 }
-                for key, value in importances.items()
+                for factor in top_factors[:5]
             ]
-        ).sort_values("Importanță", ascending=True)
+        ).sort_values("Impact SHAP", ascending=True)
 
         fig_imp = px.bar(
-            imp_df,
-            x="Importanță",
-            y="Denumire",
+            preview_df,
+            x="Impact SHAP",
+            y="Indicator",
             orientation="h",
-            title="Top indicatori care au influențat predicția ML",
+            color="Sens",
+            title="Principalii factori ai riscului din ultima perioadă",
+            color_discrete_map={
+                "Crește riscul": "#ef4444",
+                "Reduce riscul": "#22c55e",
+                "Impact neutru": "#64748b",
+            },
         )
-        _apply_dark_chart_layout(fig_imp, height=360)
-        st.plotly_chart(fig_imp, use_container_width=True, config=PLOTLY_CONFIG)
 
+        _apply_dark_chart_layout(fig_imp, height=360)
+        fig_imp.update_layout(legend_title_text="Efect asupra riscului")
+
+        st.plotly_chart(
+            fig_imp,
+            use_container_width=True,
+            config=PLOTLY_CONFIG,
+        )
     st.markdown(
         """
         <div class="dark-section-title">Istoric financiar</div>

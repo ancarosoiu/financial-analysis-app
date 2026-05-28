@@ -513,11 +513,16 @@ class DashboardDataView(APIView):
     permission_classes = [IsAuthenticated]
 
     def _safe_float(self, value):
+        """
+        Transformă valorile Decimal / Float din baza de date în float
+        pentru a putea fi trimise corect în răspunsul JSON.
+        """
         if value is None:
             return None
+
         try:
             return float(value)
-        except Exception:
+        except (TypeError, ValueError):
             return None
 
     def get(self, request, company_id):
@@ -526,88 +531,150 @@ class DashboardDataView(APIView):
 
             statements = (
                 company.statements
-                .all()
                 .select_related("kpi_snapshot")
                 .order_by("reporting_date")
             )
 
-            data = []
+            history = []
 
-            for s in statements:
-                kpi = getattr(s, "kpi_snapshot", None)
+            for statement in statements:
+                kpi = getattr(statement, "kpi_snapshot", None)
 
-                data.append({
-                    "id": s.id,
-                    "date": s.reporting_date.strftime("%Y-%m-%d"),
+                history.append({
+                    "id": statement.id,
+                    "date": statement.reporting_date.strftime("%Y-%m-%d"),
 
-                    # valori financiare principale
-                    "profit": float(s.net_profit),
-                    "venituri": float(s.sales_revenue),
-                    "ebit": float(s.ebit),
-                    "cheltuieli_operationale": float(s.operating_expenses),
-                    "active_totale": float(s.total_assets),
-                    "active_curente": float(s.current_assets),
-                    "cash": float(s.cash),
-                    "stocuri": float(s.inventory),
-                    "datorii_totale": float(s.total_liabilities),
-                    "datorii_curente": float(s.short_term_liabilities),
-                    "capitaluri_proprii": float(s.equity),
-                    "profit_retinut": float(s.retained_earnings),
+                    # =========================
+                    # DATE FINANCIARE PRINCIPALE
+                    # =========================
+                    "profit": self._safe_float(statement.net_profit),
+                    "venituri": self._safe_float(statement.sales_revenue),
+                    "ebit": self._safe_float(statement.ebit),
+                    "cheltuieli_operationale": self._safe_float(statement.operating_expenses),
 
-                    # predicție ML
-                    "probabilitate_faliment": self._safe_float(kpi.bankruptcy_probability) if kpi else None,
-                    "eticheta": kpi.prediction_label if kpi else None,
-                    "importanta_indicatori": kpi.feature_importance_data if kpi else {},
+                    "active_totale": self._safe_float(statement.total_assets),
+                    "active_curente": self._safe_float(statement.current_assets),
+                    "cash": self._safe_float(statement.cash),
+                    "stocuri": self._safe_float(statement.inventory),
 
-                    # KPI-uri relevante pentru dashboard
+                    "datorii_totale": self._safe_float(statement.total_liabilities),
+                    "datorii_curente": self._safe_float(statement.short_term_liabilities),
+                    "capitaluri_proprii": self._safe_float(statement.equity),
+                    "profit_retinut": self._safe_float(statement.retained_earnings),
+
+                    # =========================
+                    # PREDICȚIE ML + SHAP LOCAL
+                    # =========================
+                    "probabilitate_faliment": (
+                        self._safe_float(kpi.bankruptcy_probability)
+                        if kpi else None
+                    ),
+                    "eticheta": (
+                        kpi.prediction_label
+                        if kpi else None
+                    ),
+
+                    # Aici se trimite explicația SHAP locală salvată
+                    # pentru perioada financiară respectivă.
+                    "importanta_indicatori": (
+                        kpi.feature_importance_data
+                        if kpi and kpi.feature_importance_data else {}
+                    ),
+
+                    # =========================
+                    # KPI-URI PENTRU DASHBOARD
+                    # =========================
                     "kpis": {
-                        "rentabilitate_active": self._safe_float(kpi.x1) if kpi else None,      # net profit / total assets
-                        "grad_indatorare": self._safe_float(kpi.x2) if kpi else None,           # liabilities / assets
-                        "capital_lucru_active": self._safe_float(kpi.x3) if kpi else None,      # working capital / assets
-                        "lichiditate_curenta": self._safe_float(kpi.x4) if kpi else None,       # current assets / short liabilities
-                        "profit_retinut_active": self._safe_float(kpi.x6) if kpi else None,
-                        "ebit_active": self._safe_float(kpi.x7) if kpi else None,
-                        "capitaluri_datorii": self._safe_float(kpi.x8) if kpi else None,
-                        "rotatie_active": self._safe_float(kpi.x9) if kpi else None,
-                        "solvabilitate": self._safe_float(kpi.x10) if kpi else None,
-                        "profit_vanzari": self._safe_float(kpi.x23) if kpi else None,
-                        "log_active": self._safe_float(kpi.x29) if kpi else None,
-                        "capital_lucru": self._safe_float(kpi.x55) if kpi else None,
+                        # KPI-urile principale afișate în carduri
+                        "rentabilitate_active": (
+                            self._safe_float(kpi.x1) if kpi else None
+                        ),  # profit net / active totale
 
-                        # păstrăm și cheile vechi ca să nu stricăm frontend existent
-                        "lichiditate": self._safe_float(kpi.x4) if kpi else None,
-                        "profitabilitate": self._safe_float(kpi.x1) if kpi else None,
-                        "leverage": self._safe_float(kpi.x2) if kpi else None,
+                        "grad_indatorare": (
+                            self._safe_float(kpi.x2) if kpi else None
+                        ),  # datorii totale / active totale
+
+                        "capital_lucru_active": (
+                            self._safe_float(kpi.x3) if kpi else None
+                        ),  # capital de lucru / active totale
+
+                        "lichiditate_curenta": (
+                            self._safe_float(kpi.x4) if kpi else None
+                        ),  # active curente / datorii curente
+
+                        "profit_retinut_active": (
+                            self._safe_float(kpi.x6) if kpi else None
+                        ),  # profit reținut / active totale
+
+                        "ebit_active": (
+                            self._safe_float(kpi.x7) if kpi else None
+                        ),  # EBIT / active totale
+
+                        "capitaluri_datorii": (
+                            self._safe_float(kpi.x8) if kpi else None
+                        ),  # capitaluri proprii / datorii totale
+
+                        "rotatie_active": (
+                            self._safe_float(kpi.x9) if kpi else None
+                        ),  # vânzări / active totale
+
+                        "solvabilitate": (
+                            self._safe_float(kpi.x10) if kpi else None
+                        ),  # capitaluri proprii / active totale
+
+                        "profit_vanzari": (
+                            self._safe_float(kpi.x23) if kpi else None
+                        ),  # profit net / vânzări
+
+                        "log_active": (
+                            self._safe_float(kpi.x29) if kpi else None
+                        ),  # logaritmul activelor totale
+
+                        "capital_lucru": (
+                            self._safe_float(kpi.x55) if kpi else None
+                        ),  # capital de lucru
+
+                        # Chei compatibile cu eventualele componente vechi din frontend
+                        "lichiditate": (
+                            self._safe_float(kpi.x4) if kpi else None
+                        ),
+                        "profitabilitate": (
+                            self._safe_float(kpi.x1) if kpi else None
+                        ),
+                        "leverage": (
+                            self._safe_float(kpi.x2) if kpi else None
+                        ),
                     }
                 })
 
-            latest_snapshot = None
-            if data:
-                latest_snapshot = data[-1]
+            latest_snapshot = history[-1] if history else None
 
             active_model = MLModelVersion.objects.filter(is_active=True).first()
 
             model_info = None
+
             if active_model:
                 model_info = {
                     "name": active_model.name,
                     "version": active_model.version,
-                    "accuracy": active_model.accuracy,
-                    "f1_score": active_model.f1_score,
+                    "accuracy": self._safe_float(active_model.accuracy),
+                    "f1_score": self._safe_float(active_model.f1_score),
                 }
 
             return Response({
                 "company_name": company.name,
                 "is_onboarded": company.is_onboarded,
                 "summary": company.financial_summary,
-                "history": data,
+                "history": history,
                 "latest": latest_snapshot,
                 "model": model_info,
             })
 
         except Company.DoesNotExist:
-            return Response({"error": "Acces interzis"}, status=403)
-
+            return Response(
+                {"error": "Acces interzis sau compania nu există."},
+                status=403
+            )
 
 class BaseReportListView(APIView):
     permission_classes = [IsAuthenticated]
