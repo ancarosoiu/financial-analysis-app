@@ -8,9 +8,65 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status, generics
 from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot, MLModelVersion
 from .serializers import RegisterClientSerializer, RegisterAnalystSerializer,MyTokenObtainPairSerializer
-from .services import process_financial_upload, auto_assign_analyst
+from .services import process_financial_upload, auto_assign_analyst, validate_upload_before_analyst
 from django.db.models import Case, When, IntegerField
 from datetime import timedelta
+from django.http import FileResponse
+import os, re, unicodedata
+from django.core.exceptions import ValidationError
+
+def _clean_filename_part(value):
+    value = str(value or "").strip()
+
+    value = unicodedata.normalize("NFKD", value)
+    value = value.encode("ascii", "ignore").decode("ascii")
+
+    value = re.sub(r"[^A-Za-z0-9]+", "_", value)
+    value = re.sub(r"_+", "_", value)
+    value = value.strip("_")
+
+    return value or "firma"
+
+def format_validation_error(error):
+    if isinstance(error, ValidationError):
+        if hasattr(error, "messages") and error.messages:
+            message = error.messages[0]
+        elif hasattr(error, "message"):
+            message = error.message
+        else:
+            message = str(error)
+    else:
+        message = str(error)
+
+    if isinstance(message, (list, tuple)):
+        message = message[0] if message else ""
+
+    message = str(message)
+
+    message = message.replace("\\n", "\n")
+
+    if message.startswith("['") and message.endswith("']"):
+        message = message[2:-2]
+
+    if message.startswith('["') and message.endswith('"]'):
+        message = message[2:-2]
+
+    message = message.replace("\\'", "'")
+    message = message.replace('\\"', '"')
+
+    return message.strip()
+
+def build_import_download_name(upload):
+    company_name = _clean_filename_part(upload.company.name)
+    date_part = upload.uploaded_at.strftime("%Y-%m-%d")
+
+    original_name = os.path.basename(upload.file.name)
+    _, extension = os.path.splitext(original_name)
+
+    if not extension:
+        extension = ".xlsx"
+
+    return f"{company_name}_import_{date_part}{extension}"
 
 class RegisterClientView(generics.CreateAPIView):
     serializer_class = RegisterClientSerializer
@@ -59,18 +115,32 @@ class ClientUploadHistoryView(APIView):
     def get(self, request, company_id):
         try:
             company = Company.objects.for_user(request.user).get(id=company_id)
-            uploads = company.uploads.all().order_by('-uploaded_at')
-            data = [{
-                "id": u.id,
-                "data_incarcare": u.uploaded_at.strftime("%d/%m/%Y %H:%M"),
-                "status": u.status,
-                "nume_fisier": u.file.name.split('/')[-1],
-                "motiv_respingere": u.rejection_reason
-            } for u in uploads]
+            uploads = company.uploads.all().order_by("-uploaded_at")
+
+            data = []
+
+            for u in uploads:
+                pretty_file_name = build_import_download_name(u)
+                original_file_name = os.path.basename(u.file.name)
+
+                data.append({
+                    "id": u.id,
+                    "data_incarcare": u.uploaded_at.strftime("%d/%m/%Y %H:%M"),
+                    "status": u.status,
+
+                    # numele afișat în frontend
+                    "nume_fisier": pretty_file_name,
+
+                    # îl păstrăm și pe cel real, dacă ai nevoie la debugging
+                    "nume_fisier_original": original_file_name,
+
+                    "motiv_respingere": u.rejection_reason,
+                })
+
             return Response(data)
+
         except Company.DoesNotExist:
             return Response({"error": "Acces interzis"}, status=403)
-
 
 class AnalystDashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -136,7 +206,7 @@ class AnalystUploadsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.role != 'analyst' and not request.user.is_staff:
+        if request.user.role != "analyst" and not request.user.is_staff:
             return Response({"error": "Acces interzis"}, status=403)
 
         status_filter = request.query_params.get("status", "pending")
@@ -167,6 +237,9 @@ class AnalystUploadsView(APIView):
         data = []
 
         for upload in uploads:
+            pretty_file_name = build_import_download_name(upload)
+            original_file_name = os.path.basename(upload.file.name)
+
             data.append({
                 "id": upload.id,
                 "company_id": upload.company.id,
@@ -175,7 +248,11 @@ class AnalystUploadsView(APIView):
                 "industry": upload.company.industry,
                 "client_username": upload.company.owner.username,
                 "analyst_username": upload.company.analyst.username if upload.company.analyst else None,
-                "file_name": upload.file.name.split("/")[-1],
+
+                "file_name": pretty_file_name,
+
+                "original_file_name": original_file_name,
+
                 "uploaded_at": upload.uploaded_at.strftime("%d/%m/%Y %H:%M"),
                 "status": upload.status,
                 "processed_by": upload.processed_by.username if upload.processed_by else None,
@@ -269,18 +346,80 @@ class CompanyListView(APIView):
             status=201
         )
 
+class DownloadFinancialUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, upload_id):
+        try:
+            upload = FinancialUpload.objects.select_related(
+                "company",
+                "company__analyst",
+                "company__owner",
+            ).get(id=upload_id)
+
+            user = request.user
+
+            has_access = (
+                user.is_superuser
+                or user.role == "admin"
+                or upload.company.analyst_id == user.id
+                or upload.company.owner_id == user.id
+            )
+
+            if not has_access:
+                return Response(
+                    {"error": "Nu ai acces la acest fișier."},
+                    status=403,
+                )
+
+            if not upload.file:
+                return Response(
+                    {"error": "Fișierul nu există."},
+                    status=404,
+                )
+
+            file_path = upload.file.path
+
+            if not os.path.exists(file_path):
+                return Response(
+                    {"error": "Fișierul nu a fost găsit pe server."},
+                    status=404,
+                )
+
+            download_name = build_import_download_name(upload)
+
+            response = FileResponse(
+                open(file_path, "rb"),
+                as_attachment=True,
+                filename=download_name,
+            )
+
+            return response
+
+        except FinancialUpload.DoesNotExist:
+            return Response(
+                {"error": "Importul nu există."},
+                status=404,
+            )
+
 class FinancialUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
         user = request.user
-        file_obj = request.FILES.get('file')
-        company_id = request.data.get('company_id')
+        file_obj = request.FILES.get("file")
+        company_id = request.data.get("company_id")
 
         if not file_obj or not company_id:
             return Response(
-                {"error": "Lipsesc fișierul sau ID-ul firmei."},
+                {
+                    "error": (
+                        "Nu s-a putut iniția încărcarea fișierului.\n\n"
+                        "Lipsesc fișierul Excel sau identificatorul firmei."
+                    ),
+                    "code": "missing_file_or_company"
+                },
                 status=400
             )
 
@@ -288,11 +427,16 @@ class FinancialUploadView(APIView):
             company = Company.objects.for_user(user).get(id=company_id)
         except Company.DoesNotExist:
             return Response(
-                {"error": "Firma nu a fost găsită sau nu ai acces."},
+                {
+                    "error": (
+                        "Firma nu a fost găsită sau nu ai dreptul să încarci "
+                        "fișiere pentru această companie."
+                    ),
+                    "code": "company_not_found"
+                },
                 status=403
             )
 
-        # 1. Nu permitem un import nou dacă există deja unul în așteptare.
         pending_exists = FinancialUpload.objects.filter(
             company=company,
             status="pending"
@@ -301,14 +445,16 @@ class FinancialUploadView(APIView):
         if pending_exists:
             return Response(
                 {
-                    "error": "Există deja un import în așteptare pentru această firmă. Așteaptă validarea lui înainte de a încărca alt fișier.",
+                    "error": (
+                        "Există deja un import în așteptare pentru această firmă.\n\n"
+                        "Te rugăm să aștepți validarea importului curent înainte de "
+                        "a încărca un nou fișier financiar."
+                    ),
                     "code": "pending_import_exists"
                 },
                 status=409
             )
 
-        # 2. Dacă firma este deja onboarded, permitem import nou doar după 30 zile
-        # de la ultimul import aprobat.
         if company.is_onboarded:
             last_approved_upload = FinancialUpload.objects.filter(
                 company=company,
@@ -318,41 +464,88 @@ class FinancialUploadView(APIView):
 
             if last_approved_upload:
                 today = timezone.localdate()
-                next_allowed_date = last_approved_upload.processed_at.date() + timedelta(days=30)
+                next_allowed_date = (
+                    last_approved_upload.processed_at.date()
+                    + timedelta(days=30)
+                )
 
                 if today < next_allowed_date:
                     return Response(
                         {
-                            "error": f"Poți încărca un import nou abia după data de {next_allowed_date.strftime('%d/%m/%Y')}.",
+                            "error": (
+                                "Încărcarea unui nou import nu este încă disponibilă.\n\n"
+                                f"Poți încărca un import nou abia după data de "
+                                f"{next_allowed_date.strftime('%d/%m/%Y')}."
+                            ),
                             "code": "too_soon_after_last_approved_import",
                             "next_allowed_date": next_allowed_date.strftime("%Y-%m-%d")
                         },
                         status=409
                     )
 
-        # 3. Asignare automată analist dacă firma nu are încă.
         if not company.analyst:
             auto_assign_analyst(company)
             company.refresh_from_db()
 
+        if not company.analyst:
+            return Response(
+                {
+                    "error": (
+                        "Fișierul nu poate fi trimis momentan spre validare.\n\n"
+                        "Nu există niciun analist disponibil pentru această companie. "
+                        "Te rugăm să încerci din nou după configurarea unui cont de analist."
+                    ),
+                    "code": "no_analyst_available"
+                },
+                status=400
+            )
+
         upload = FinancialUpload.objects.create(
             company=company,
             file=file_obj,
-            status='pending'
+            status="pending"
         )
 
-        if company.analyst:
-            Notification.objects.create(
-                sender=user,
-                recipient=company.analyst,
-                title="Document nou în așteptare",
-                message=f"Clientul {user.username} a încărcat un fișier nou pentru firma {company.name}. Te rugăm să îl validezi.",
-                action_url=f"/analyst/review/{upload.id}"
+        try:
+            validate_upload_before_analyst(upload)
+
+        except Exception as e:
+            error_message = format_validation_error(e)
+
+            if upload.file:
+                upload.file.delete(save=False)
+
+            upload.delete()
+
+            return Response(
+                {
+                    "error": (
+                        "Fișierul nu a trecut validarea automată.\n\n"
+                        f"{error_message}"
+                    ),
+                    "code": "automatic_validation_failed"
+                },
+                status=400
             )
+
+        Notification.objects.create(
+            sender=user,
+            recipient=company.analyst,
+            title="Document nou în așteptare",
+            message=(
+                f"Clientul {user.username} a încărcat un fișier nou pentru firma "
+                f"{company.name}. Fișierul a trecut validarea automată și așteaptă "
+                "verificarea ta finală."
+            ),
+            action_url=f"/analyst/review/{upload.id}"
+        )
 
         return Response(
             {
-                "message": "Fișierul a fost încărcat cu succes!",
+                "message": (
+                    "Fișierul a fost validat automat și trimis către analist "
+                    "pentru verificarea finală."
+                ),
                 "upload_id": upload.id,
                 "file_path": upload.file.name,
                 "status": upload.status
@@ -432,8 +625,16 @@ class ReviewUploadView(APIView):
                         status=200
                     )
 
+                clean_message = format_validation_error(message)
+
                 return Response(
-                    {"error": f"Procesarea a eșuat la validare: {message}"},
+                    {
+                        "error": (
+                            "Procesarea importului a eșuat la validare.\n\n"
+                            f"{clean_message}"
+                        ),
+                        "code": "processing_validation_failed"
+                    },
                     status=400
                 )
 

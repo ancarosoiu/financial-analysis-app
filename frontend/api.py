@@ -104,6 +104,47 @@ def get_client_dashboard(company_id: int, access_token: str):
             "message": "Nu s-au putut încărca datele dashboard-ului client."
         }
 
+def download_upload_file(upload_id: int, access_token: str):
+    url = f"{BASE_URL}/uploads/{upload_id}/download/"
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=30,
+        )
+
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+                message = (
+                    data.get("detail")
+                    or data.get("message")
+                    or data.get("error")
+                    or "Fișierul nu a putut fi descărcat."
+                )
+            except Exception:
+                message = "Fișierul nu a putut fi descărcat."
+
+            return {
+                "success": False,
+                "message": message,
+            }
+
+        return {
+            "success": True,
+            "content": response.content,
+            "content_type": response.headers.get(
+                "Content-Type",
+                "application/octet-stream",
+            ),
+        }
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Nu s-a putut realiza descărcarea fișierului.",
+        }
 
 def upload_financial_file(company_id: int, file, access_token: str):
     url = f"{BASE_URL}/uploads/"

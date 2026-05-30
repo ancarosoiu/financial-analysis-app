@@ -241,7 +241,7 @@ def load_global_styles():
         .stSelectbox [data-baseweb="select"] {
             background: white !important;
         }
-
+        
         .stSelectbox [data-baseweb="select"] > div {
             min-height: 42px !important;
             border-radius: 7px !important;
@@ -249,45 +249,85 @@ def load_global_styles():
             background: white !important;
             box-shadow: none !important;
         }
-
+        
+        /* Fundal alb pentru toate straturile interne */
         .stSelectbox [data-baseweb="select"] div {
             background: white !important;
         }
-
-        .stSelectbox [data-baseweb="select"] span {
-            color: #111827 !important;
-            opacity: 1 !important;
-        }
-
+        
+        /* Textul selectat din căsuță */
+        .stSelectbox [data-baseweb="select"] span,
+        .stSelectbox [data-baseweb="select"] div[role="combobox"],
+        .stSelectbox [data-baseweb="select"] div[aria-selected],
         .stSelectbox [data-baseweb="select"] input {
             color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+            opacity: 1 !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Textul placeholder/selectat generat de BaseWeb */
+        .stSelectbox [data-baseweb="select"] [class*="singleValue"],
+        .stSelectbox [data-baseweb="select"] [class*="placeholder"],
+        .stSelectbox [data-baseweb="select"] [class*="valueContainer"] {
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
             opacity: 1 !important;
         }
-
+        
+        /* Săgeata dropdown */
         .stSelectbox [data-baseweb="select"] svg {
             color: #64748b !important;
             fill: #64748b !important;
         }
-
+        
+        /* Dropdown-ul deschis */
         div[data-baseweb="popover"] {
             background: white !important;
+            z-index: 999999 !important;
         }
-
+        
         div[data-baseweb="popover"] ul {
             background: white !important;
             border-radius: 10px !important;
             border: 1px solid #e5e7eb !important;
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12) !important;
+            padding: 6px !important;
         }
-
+        
         div[data-baseweb="popover"] li {
             color: #111827 !important;
             background: white !important;
+            font-weight: 500 !important;
         }
-
-        div[data-baseweb="popover"] li:hover {
+        
+        div[data-baseweb="popover"] li:hover,
+        div[data-baseweb="popover"] li[aria-selected="true"] {
             background: #eef4ff !important;
             color: #111827 !important;
+        }
+        
+        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] input,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] div[role="combobox"] {
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] input::placeholder {
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+            opacity: 1 !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] svg,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] svg path {
+            color: #64748b !important;
+            fill: #64748b !important;
+            stroke: #64748b !important;
         }
 
         /* =========================
@@ -1564,6 +1604,31 @@ def load_global_styles():
             box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28) !important;
             background: white !important;
             padding: 0 !important;
+        }
+        
+        /* Buton download din modala de validare import */
+        div[data-testid="stDownloadButton"] button {
+            height: 44px !important;
+            border-radius: 12px !important;
+            background: #0f172a !important;
+            color: #ffffff !important;
+            border: 1px solid #1e293b !important;
+            font-weight: 800 !important;
+            font-size: 0.92rem !important;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18) !important;
+            transition: 0.18s ease !important;
+            margin-bottom: 0.9rem !important;
+        }
+        
+        div[data-testid="stDownloadButton"] button:hover {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            border-color: #334155 !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        div[data-testid="stDownloadButton"] button:active {
+            transform: translateY(0) !important;
         }
 
         .review-modal-header {

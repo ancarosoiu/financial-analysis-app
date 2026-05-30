@@ -9,6 +9,40 @@ from django.db.models import Count
 from .ml_service import predict_risk
 from .models import FinancialUpload, FinancialStatement, KPISnapshot, BaseReport
 
+FRIENDLY_COLUMN_NAMES = {
+    "reporting_date": "Data raportării",
+    "net_profit": "Profit net",
+    "ebit": "EBIT",
+    "sales_revenue": "Venituri din vânzări",
+    "depreciation": "Amortizare",
+    "operating_expenses": "Cheltuieli operaționale",
+    "total_assets": "Active totale",
+    "current_assets": "Active curente",
+    "inventory": "Stocuri",
+    "cash": "Numerar",
+    "total_liabilities": "Datorii totale",
+    "short_term_liabilities": "Datorii pe termen scurt",
+    "equity": "Capitaluri proprii",
+    "retained_earnings": "Profit reportat",
+    "short_term_securities": "Titluri pe termen scurt",
+    "receivables": "Creanțe",
+    "gross_profit": "Profit brut",
+    "extraordinary_items": "Elemente extraordinare",
+    "financial_expenses": "Cheltuieli financiare",
+    "interest": "Dobânzi",
+    "share_capital": "Capital social",
+    "profit_on_operating_activities": "Profit din activitatea operațională",
+    "gross_profit_3_years": "Profit brut cumulat pe 3 ani",
+    "cost_of_products_sold": "Costul produselor vândute",
+    "profit_on_sales": "Profit din vânzări",
+    "total_costs": "Costuri totale",
+    "previous_period_sales": "Vânzările perioadei anterioare",
+}
+
+def format_friendly_list(columns):
+    return "\n".join(
+        [f"- {FRIENDLY_COLUMN_NAMES.get(col, col)}" for col in columns]
+    )
 
 def validate_and_parse_financial_excel(file_path, is_onboarding=True):
     required_columns = [
@@ -52,16 +86,19 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
         ]
 
         if missing_columns:
+            friendly_missing = format_friendly_list(missing_columns)
             raise ValidationError(
-                "Fișier incomplet. Lipsesc coloanele: "
-                + ", ".join(missing_columns)
+                "Fișierul încărcat nu conține toate coloanele financiare obligatorii.\n\n"
+                "Lipsesc următoarele coloane:\n"
+                f"{friendly_missing}\n\n"
+                "Te rugăm să revizuiești fișierul și să reîncerci încărcarea "
+                "folosind un fișier Excel cu date financiare valide."
             )
 
-        df = df.dropna(how="all").reset_index(drop=True)
-
-        if df.empty:
+        if is_onboarding and len(df) < 12:
             raise ValidationError(
-                "Fișierul încărcat nu conține date financiare."
+                f"Onboarding eșuat. Sunt necesare minimum 12 perioade financiare, "
+                f"dar fișierul conține doar {len(df)}."
             )
 
         df['reporting_date'] = pd.to_datetime(
@@ -71,37 +108,17 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
 
         if df['reporting_date'].isna().any():
             raise ValidationError(
-                "Coloana reporting_date conține valori lipsă sau date invalide."
+                "Coloana «Data raportării» conține valori invalide. "
+                "Te rugăm să verifici formatul datelor calendaristice."
             )
-
-        reporting_months = df['reporting_date'].dt.to_period('M')
-
-        if reporting_months.duplicated().any():
-            raise ValidationError(
-                "Fișierul conține mai multe înregistrări pentru aceeași lună financiară."
-            )
-
-        if is_onboarding and reporting_months.nunique() < 12:
-            raise ValidationError(
-                f"Onboarding eșuat. Sunt necesare minimum 12 luni financiare distincte, "
-                f"dar fișierul conține doar {reporting_months.nunique()}."
-            )
-
-        if is_onboarding:
-            sorted_months = sorted(reporting_months.unique())
-
-            expected_months = pd.period_range(
-                start=sorted_months[0],
-                end=sorted_months[-1],
-                freq='M'
-            )
-
-            if len(expected_months) != len(sorted_months):
-                raise ValidationError(
-                    "Pentru onboarding, perioadele financiare trebuie să reprezinte luni consecutive."
-                )
 
         df['reporting_date'] = df['reporting_date'].dt.date
+
+        if df['reporting_date'].duplicated().any():
+            raise ValidationError(
+                "Fișierul conține perioade financiare duplicate. "
+                "Fiecare lună/perioadă trebuie să apară o singură dată."
+            )
 
         numeric_columns = [
             col for col in required_columns
@@ -117,9 +134,12 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
         ]
 
         if invalid_numeric_columns:
+            friendly_invalid = format_friendly_list(invalid_numeric_columns)
             raise ValidationError(
-                "Există valori lipsă sau invalide în coloanele: "
-                + ", ".join(invalid_numeric_columns)
+                "Fișierul conține valori lipsă sau invalide în unele coloane financiare.\n\n"
+                "Verifică următoarele câmpuri:\n"
+                f"{friendly_invalid}\n\n"
+                "Te rugăm să corectezi valorile și să reîncerci încărcarea fișierului."
             )
 
         if (df['total_assets'] <= 0).any():
@@ -137,29 +157,6 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
                 "Vânzările perioadei anterioare trebuie să fie mai mari decât zero."
             )
 
-        non_negative_columns = {
-            'current_assets': "Activele curente",
-            'inventory': "Stocurile",
-            'cash': "Disponibilitățile bănești",
-            'total_liabilities': "Datoriile totale",
-            'short_term_liabilities': "Datoriile pe termen scurt",
-            'short_term_securities': "Titlurile financiare pe termen scurt",
-            'receivables': "Creanțele",
-            'depreciation': "Amortizarea",
-            'operating_expenses': "Cheltuielile operaționale",
-            'financial_expenses': "Cheltuielile financiare",
-            'interest': "Dobânzile",
-            'share_capital': "Capitalul social",
-            'cost_of_products_sold': "Costul produselor vândute",
-            'total_costs': "Costurile totale",
-        }
-
-        for column, label in non_negative_columns.items():
-            if (df[column] < 0).any():
-                raise ValidationError(
-                    f"{label} nu pot avea valori negative."
-                )
-
         if (df['current_assets'] > df['total_assets']).any():
             raise ValidationError(
                 "Activele curente nu pot depăși activele totale."
@@ -168,34 +165,6 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
         if (df['inventory'] > df['current_assets']).any():
             raise ValidationError(
                 "Stocurile nu pot depăși activele curente."
-            )
-
-        if (df['receivables'] > df['current_assets']).any():
-            raise ValidationError(
-                "Creanțele nu pot depăși activele curente."
-            )
-
-        if (df['cash'] > df['current_assets']).any():
-            raise ValidationError(
-                "Disponibilitățile bănești nu pot depăși activele curente."
-            )
-
-        if (df['short_term_securities'] > df['current_assets']).any():
-            raise ValidationError(
-                "Titlurile financiare pe termen scurt nu pot depăși activele curente."
-            )
-
-        if (
-            df['cash']
-            + df['receivables']
-            + df['inventory']
-            + df['short_term_securities']
-            > df['current_assets']
-        ).any():
-            raise ValidationError(
-                "Suma componentelor activelor curente "
-                "(numerar, creanțe, stocuri și titluri financiare pe termen scurt) "
-                "nu poate depăși valoarea activelor curente."
             )
 
         if (df['short_term_liabilities'] > df['total_liabilities']).any():
@@ -216,20 +185,6 @@ def validate_and_parse_financial_excel(file_path, is_onboarding=True):
         )
 
 def calculate_kpis(df):
-    """
-    Calculează indicatorii financiari X1-X64 conform structurii UCI
-    Polish Companies Bankruptcy Dataset, pentru fiecare perioadă financiară
-    din fișierul încărcat.
-
-    X65 și X66 sunt indicatori suplimentari creați prin feature engineering,
-    identici cu cei utilizați la antrenarea modelului LightGBM.
-
-    În aplicația curentă:
-        - fiecare rând din Excel reprezintă o lună financiară;
-        - fiecare lună primește propriul snapshot KPI;
-        - pentru fiecare snapshot este generată propria predicție ML.
-    """
-
     d = df.copy()
 
     def safe_divide(numerator, denominator):
@@ -656,6 +611,41 @@ def calculate_kpis(df):
 
     return d
 
+def validate_upload_before_analyst(upload_instance):
+    onboarding_needed = not upload_instance.company.is_onboarded
+
+    df_raw = validate_and_parse_financial_excel(
+        upload_instance.file.path,
+        is_onboarding=onboarding_needed
+    )
+
+    existing_months = {
+        pd.Period(date, freq='M')
+        for date in FinancialStatement.objects.filter(company=upload_instance.company)
+        .values_list("reporting_date", flat=True)
+    }
+
+    uploaded_months = {
+        pd.Period(date, freq='M')
+        for date in df_raw["reporting_date"].tolist()
+    }
+
+    duplicate_months = existing_months.intersection(uploaded_months)
+
+    if duplicate_months:
+        duplicate_months_str = ", ".join(
+            [str(month) for month in sorted(duplicate_months)]
+        )
+
+        raise ValidationError(
+            f"Fișierul conține luni deja existente în sistem: {duplicate_months_str}. "
+            "Încarcă doar luni financiare noi."
+        )
+
+    calculate_kpis(df_raw)
+
+    return True
+
 User = get_user_model()
 def auto_assign_analyst(company):
     analysts = User.objects.filter(role='analyst').annotate(
@@ -762,30 +752,63 @@ def save_calculated_data(company, upload_instance, df_final):
 def process_financial_upload(upload_instance):
     try:
         onboarding_needed = not upload_instance.company.is_onboarded
+
+        print("=" * 80)
+        print(f"DEBUG PROCESS UPLOAD ID: {upload_instance.id}")
+        print(f"DEBUG COMPANY: {upload_instance.company.name}")
+        print(f"DEBUG ONBOARDING NEEDED: {onboarding_needed}")
+        print(f"DEBUG FILE PATH: {upload_instance.file.path}")
+        print("=" * 80)
+
         df_raw = validate_and_parse_financial_excel(
             upload_instance.file.path,
             is_onboarding=onboarding_needed
         )
 
+        print("DEBUG PAS 1 OK: fișier validat și citit.")
+        print(f"DEBUG ROWS: {len(df_raw)}")
+        print(f"DEBUG COLUMNS: {list(df_raw.columns)}")
+
         df_kpi = calculate_kpis(df_raw)
 
-        save_calculated_data(upload_instance.company, upload_instance, df_kpi)
+        print("DEBUG PAS 2 OK: KPI calculați.")
+        print(f"DEBUG KPI COLUMNS EXIST: {[f'x{i}' for i in range(1, 67) if f'x{i}' in df_kpi.columns]}")
 
-        return True, "Procesare reusita!"
+        save_calculated_data(
+            upload_instance.company,
+            upload_instance,
+            df_kpi
+        )
+
+        print("DEBUG PAS 3 OK: date salvate, predicții generate, import aprobat.")
+        print("=" * 80)
+
+        return True, "Procesare reușită."
 
     except ValidationError as e:
-        upload_instance.status = 'rejected'
-        upload_instance.rejection_reason = str(e)
+        if hasattr(e, "messages") and e.messages:
+            error_message = e.messages[0]
+        else:
+            error_message = str(e)
+
+        upload_instance.status = "rejected"
+        upload_instance.rejection_reason = error_message
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
-        return False, str(e)
+
+        print("=" * 80)
+        print("DEBUG VALIDATION ERROR ÎN PROCESS_FINANCIAL_UPLOAD:")
+        print(error_message)
+        print("=" * 80)
+
+        return False, error_message
 
     except Exception as e:
-        upload_instance.status = 'rejected'
-        upload_instance.rejection_reason = f"Eroare sistem: {str(e)}"
+        error_message = str(e)
+
+        upload_instance.status = "rejected"
+        upload_instance.rejection_reason = f"Eroare sistem: {error_message}"
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
-        print(f"DEBUG EROARE REALA: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False, "A intervenit o eroare tehnica neprevazuta"
+
+        return False, error_message

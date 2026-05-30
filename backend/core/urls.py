@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     CompanyListView,
+    DownloadFinancialUploadView,
     FinancialUploadView,
     ReviewUploadView,
     NotificationListView,
@@ -37,6 +38,7 @@ urlpatterns = [
     path('uploads/', FinancialUploadView.as_view(), name='upload-create'),
     path('companies/<int:company_id>/uploads/', ClientUploadHistoryView.as_view(), name='upload-history'),
     path('uploads/<int:upload_id>/review/', ReviewUploadView.as_view(), name='upload-review'),
+    path("uploads/<int:upload_id>/download/",DownloadFinancialUploadView.as_view(),name="download-financial-upload"),
 
     path('companies/<int:company_id>/reports/standard/', BaseReportListView.as_view(), name='report-standard-list'),
     path('companies/<int:company_id>/reports/request/', CreateReportRequestView.as_view(), name='report-request-create'),
