@@ -7,7 +7,11 @@ from views.client import (
     render_client_imports_page,
     render_client_risk_page,
 )
-from views.analyst import render_analyst_dashboard
+from views.analyst import (
+    render_analyst_portfolio_page,
+    render_analyst_imports_page,
+    render_analyst_reports_page,
+)
 from views.styles import load_global_styles
 
 st.set_page_config(
@@ -46,10 +50,18 @@ if st.session_state.authenticated:
 
         elif st.session_state.role == "analyst":
             st.write("---")
-            if st.button("Analyst Dashboard", use_container_width=True):
-                st.session_state.page = "analyst_dashboard"
+
+            if st.button("Portofoliu firme", use_container_width=True):
+                st.session_state.page = "analyst_portfolio"
+
+            if st.button("Importuri", use_container_width=True):
+                st.session_state.page = "analyst_imports"
+
+            if st.button("Rapoarte", use_container_width=True):
+                st.session_state.page = "analyst_reports"
 
         st.write("---")
+
         if st.button("Logout", use_container_width=True):
             logout()
             st.rerun()
@@ -68,4 +80,9 @@ else:
             render_client_dashboard()
 
     elif st.session_state.role == "analyst":
-        render_analyst_dashboard()
+        if st.session_state.page == "analyst_imports":
+            render_analyst_imports_page()
+        elif st.session_state.page == "analyst_reports":
+            render_analyst_reports_page()
+        else:
+            render_analyst_portfolio_page()

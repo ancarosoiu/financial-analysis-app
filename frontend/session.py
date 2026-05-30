@@ -34,7 +34,7 @@ def login_user(data: dict):
             else "client_onboarding"
         )
     elif st.session_state.role == "analyst":
-        st.session_state.page = "analyst_dashboard"
+        st.session_state.page = "analyst_portfolio"
     else:
         st.session_state.page = "auth"
 
@@ -49,7 +49,13 @@ def logout():
         "is_onboarded",
         "company_id",
         "page",
+        "selected_review_upload",
+        "analyst_flash_message",
+        "analyst_flash_type",
+        "analyst_upload_status_filter",
+        "client_upload_status_filter",
     ]
+
     for key in keys:
         if key in st.session_state:
             del st.session_state[key]

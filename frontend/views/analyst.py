@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+from html import escape
 
 from api import (
     get_analyst_dashboard_stats,
@@ -9,156 +9,8 @@ from api import (
     download_upload_file,
 )
 
-from views.styles import metric_card
+from views.styles import load_analyst_styles
 
-
-def _render_analyst_styles_override():
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background: #f4f7fb !important;
-        }
-
-        .block-container {
-            max-width: 1280px !important;
-            padding-top: 1.4rem !important;
-            padding-bottom: 2rem !important;
-        }
-
-        /* Pe pagina analistului NU vrem tab-uri înguste ca la login */
-        .stTabs {
-            max-width: 100% !important;
-            width: 100% !important;
-            margin: 0 !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            border-radius: 0 !important;
-        }
-
-        .stTabs [data-baseweb="tab-list"] {
-            max-width: 520px !important;
-            background: white !important;
-            padding: 6px !important;
-            border-radius: 14px !important;
-            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06) !important;
-            margin-bottom: 1.3rem !important;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            height: 44px !important;
-            border-radius: 10px !important;
-            font-weight: 750 !important;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background: #2563eb !important;
-            color: white !important;
-        }
-
-        .stTabs [aria-selected="true"] p {
-            color: white !important;
-        }
-
-        div[data-testid="stHorizontalBlock"] {
-            align-items: center;
-        }
-
-        /* =========================
-           FIX SELECTBOX ANALIST
-           Face textul selectat vizibil în căsuța de filtrare
-        ========================= */
-
-        div[data-testid="stSelectbox"] {
-            color: #111827 !important;
-        }
-
-        div[data-testid="stSelectbox"] label p {
-            color: #111827 !important;
-            font-weight: 800 !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] {
-            background: #ffffff !important;
-            border-radius: 10px !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-            min-height: 46px !important;
-            background: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 10px !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
-            background: #ffffff !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] input,
-        div[data-testid="stSelectbox"] [data-baseweb="select"] div[role="combobox"] {
-            color: #111827 !important;
-            -webkit-text-fill-color: #111827 !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-            font-weight: 650 !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] input::placeholder {
-            color: #111827 !important;
-            -webkit-text-fill-color: #111827 !important;
-            opacity: 1 !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] svg {
-            color: #64748b !important;
-            fill: #64748b !important;
-            stroke: #64748b !important;
-        }
-
-        div[data-testid="stSelectbox"] [data-baseweb="select"] svg path {
-            fill: #64748b !important;
-            stroke: #64748b !important;
-        }
-
-        div[data-baseweb="popover"] {
-            background: #ffffff !important;
-            z-index: 999999 !important;
-        }
-
-        div[data-baseweb="popover"] ul {
-            background: #ffffff !important;
-            border-radius: 10px !important;
-            border: 1px solid #cbd5e1 !important;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18) !important;
-            padding: 6px !important;
-        }
-
-        div[data-baseweb="popover"] li,
-        div[data-baseweb="popover"] li *,
-        div[data-baseweb="popover"] [role="option"],
-        div[data-baseweb="popover"] [role="option"] * {
-            color: #111827 !important;
-            -webkit-text-fill-color: #111827 !important;
-            background: #ffffff !important;
-            opacity: 1 !important;
-            font-weight: 500 !important;
-        }
-
-        div[data-baseweb="popover"] li:hover,
-        div[data-baseweb="popover"] li[aria-selected="true"],
-        div[data-baseweb="popover"] [role="option"]:hover,
-        div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
-            background: #eef4ff !important;
-            color: #111827 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
 def _status_label(status: str):
     labels = {
@@ -210,6 +62,107 @@ def _show_flash_message():
         st.error(message)
 
 
+def _render_analyst_header(title: str, subtitle: str):
+    st.markdown(
+        f"""
+        <div class="analyst-page-header">
+            <div>
+                <div class="analyst-page-title">{title}</div>
+                <div class="analyst-page-subtitle">{subtitle}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _analyst_stat_card(title: str, value, caption: str):
+    return f"""
+    <div class="analyst-stat-card">
+        <div class="analyst-stat-title">{title}</div>
+        <div class="analyst-stat-value">{value}</div>
+        <div class="analyst-stat-caption">{caption}</div>
+    </div>
+    """
+
+
+def _safe_company_value(company: dict, *keys, default="—"):
+    for key in keys:
+        value = company.get(key)
+        if value not in [None, ""]:
+            return escape(str(value))
+    return default
+
+
+def _render_companies_table(companies: list):
+    rows_html = ""
+
+    for company in companies:
+        name = _safe_company_value(company, "nume", "name")
+        cui = _safe_company_value(company, "cui")
+        industry = _safe_company_value(company, "industrie", "industry")
+        address = _safe_company_value(company, "adresa", "address")
+        email = _safe_company_value(company, "email", "email_contact")
+        phone = _safe_company_value(company, "telefon", "phone", "phone_number")
+        owner = _safe_company_value(company, "owner_username", "client_username", "owner")
+        onboarded = company.get("status_onboarded", company.get("is_onboarded", False))
+
+        if onboarded:
+            status_badge = '<span class="company-status-badge company-status-active">Activă</span>'
+        else:
+            status_badge = '<span class="company-status-badge company-status-pending">În configurare</span>'
+
+        rows_html += f"""
+        <div class="analyst-company-row">
+            <div>
+                <div class="analyst-company-main">{name}</div>
+                <div class="analyst-company-sub">Client: {owner}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{cui}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{industry}</div>
+                <div class="analyst-company-sub">{address}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{email}</div>
+                <div class="analyst-company-sub">{phone}</div>
+            </div>
+
+            <div>
+                {status_badge}
+            </div>
+        </div>
+        """
+
+    table_html = f"""
+    <div class="analyst-company-table-card">
+        <div class="analyst-company-table-title">Lista firmelor asignate</div>
+        <div class="analyst-company-table-subtitle">
+            Firmele monitorizate de analist și principalele informații de identificare.
+        </div>
+
+        <div class="analyst-company-table">
+            <div class="analyst-company-header">
+                <div>Companie</div>
+                <div>CUI</div>
+                <div>Domeniu</div>
+                <div>Contact</div>
+                <div>Status</div>
+            </div>
+
+            {rows_html}
+        </div>
+    </div>
+    """
+
+    st.html(table_html)
+
+
 @st.dialog("Verificare import financiar", width="large")
 def render_review_import_modal(upload: dict):
     upload_id = upload.get("id")
@@ -223,7 +176,7 @@ def render_review_import_modal(upload: dict):
         st.rerun()
 
     st.markdown(
-        f"""
+        """
         <div class="review-modal-header">
             <div class="review-modal-icon">▤</div>
             <div>
@@ -407,7 +360,7 @@ def render_upload_actions(upload: dict):
         status_text = _status_label(status).lower()
         st.markdown(
             f"""
-            <div class="table-sub-text">
+            <div class="analyst-muted-action">
                 Import {status_text}
             </div>
             """,
@@ -427,50 +380,39 @@ def render_upload_actions(upload: dict):
 def render_upload_row(upload: dict):
     status = upload.get("status")
 
-    with st.container(border=True):
-        col_company, col_file, col_date, col_status, col_actions = st.columns(
-            [2.4, 2.6, 1.5, 1.3, 1.7],
-            vertical_alignment="center",
-        )
-
-        with col_company:
-            st.markdown(
-                f"""
-                <div class="table-main-text">{upload.get("company_name")}</div>
-                <div class="table-sub-text">
+    st.markdown(
+        f"""
+        <div class="analyst-import-row">
+            <div>
+                <div class="analyst-main-text">{upload.get("company_name")}</div>
+                <div class="analyst-sub-text">
                     CUI: {upload.get("cui")} · Client: {upload.get("client_username")}
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with col_file:
-            st.markdown(
-                f"""
-                <div class="table-main-text">{upload.get("file_name")}</div>
-                <div class="table-sub-text">
+            </div>
+            <div>
+                <div class="analyst-main-text">{upload.get("file_name")}</div>
+                <div class="analyst-sub-text">
                     Domeniu: {upload.get("industry") or "N/A"}
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with col_date:
-            st.markdown(
-                f"""
-                <div class="table-main-text">{upload.get("uploaded_at")}</div>
-                <div class="table-sub-text">
+            </div>
+            <div>
+                <div class="analyst-main-text">{upload.get("uploaded_at")}</div>
+                <div class="analyst-sub-text">
                     Procesat: {upload.get("processed_at") or "—"}
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            </div>
+            <div>
+                {_status_badge(status)}
+            </div>
+            <div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        with col_status:
-            st.markdown(_status_badge(status), unsafe_allow_html=True)
-
-        with col_actions:
-            render_upload_actions(upload)
+    action_cols = st.columns([2.1, 2.5, 1.45, 1.15, 1.25])
+    with action_cols[-1]:
+        render_upload_actions(upload)
 
     if status == "rejected" and upload.get("rejection_reason"):
         st.markdown(
@@ -486,13 +428,14 @@ def render_upload_row(upload: dict):
 def render_uploads_table(uploads: list):
     st.markdown(
         """
-        <div class="uploads-table-header">
-            <div>Companie</div>
-            <div>Fișier</div>
-            <div>Data încărcării</div>
-            <div>Status</div>
-            <div>Acțiuni</div>
-        </div>
+        <div class="analyst-table-card">
+            <div class="analyst-import-header">
+                <div>Companie</div>
+                <div>Fișier</div>
+                <div>Data încărcării</div>
+                <div>Status</div>
+                <div>Acțiuni</div>
+            </div>
         """,
         unsafe_allow_html=True,
     )
@@ -500,16 +443,25 @@ def render_uploads_table(uploads: list):
     for upload in uploads:
         render_upload_row(upload)
 
+    st.markdown("</div>", unsafe_allow_html=True)
 
-def render_uploads_section():
+
+def render_analyst_imports_page():
+    load_analyst_styles()
+
+    _render_analyst_header(
+        "Importuri financiare",
+        "Verifică fișierele încărcate de clienți, descarcă documentele Excel și aprobă sau respinge importurile."
+    )
+
     st.markdown(
         """
-        <div class="analyst-section-header">
-            <div>
-                <div class="analyst-section-title">Importuri financiare</div>
-                <div class="analyst-section-subtitle">
-                    Verifică și procesează fișierele încărcate de clienți. Importurile în așteptare apar implicit primele.
-                </div>
+        <div class="analyst-hero">
+            <div class="analyst-hero-eyebrow">Validare date financiare</div>
+            <div class="analyst-hero-title">Importuri în lucru</div>
+            <div class="analyst-hero-text">
+                Sistemul acceptă doar fișiere care trec validarea automată. Analistul realizează verificarea finală,
+                iar după aprobare sunt calculate KPI-urile, predicția ML și explicațiile SHAP.
             </div>
         </div>
         """,
@@ -517,16 +469,6 @@ def render_uploads_section():
     )
 
     _show_flash_message()
-
-    top_left, top_right = st.columns([2.4, 1], vertical_alignment="bottom")
-
-    with top_left:
-        st.markdown(
-            """
-            <div class="small-section-title">Lista importurilor</div>
-            """,
-            unsafe_allow_html=True,
-        )
 
     status_map = {
         "În așteptare": "pending",
@@ -540,7 +482,20 @@ def render_uploads_section():
     if "analyst_upload_status_filter" not in st.session_state:
         st.session_state.analyst_upload_status_filter = "În așteptare"
 
-    with top_right:
+    toolbar_left, toolbar_right = st.columns([2.4, 1], vertical_alignment="bottom")
+
+    with toolbar_left:
+        st.markdown(
+            """
+            <div class="analyst-section-title-dark">Lista importurilor</div>
+            <div class="analyst-section-subtitle-dark">
+                Rândurile sunt ordonate după status și data încărcării. Importurile în așteptare necesită acțiune.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with toolbar_right:
         selected_status_label = st.selectbox(
             "Filtrează după status",
             options=status_options,
@@ -567,7 +522,14 @@ def render_uploads_section():
     uploads = result.get("data", [])
 
     if not uploads:
-        st.info("Nu există importuri pentru filtrul selectat.")
+        st.markdown(
+            """
+            <div class="analyst-empty-card">
+                Nu există importuri pentru filtrul selectat.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     render_uploads_table(uploads)
@@ -580,46 +542,12 @@ def render_uploads_section():
         st.session_state.selected_review_upload = None
 
 
-def render_companies_table():
-    st.markdown(
-        """
-        <div class="analyst-section-title small">Firme asignate</div>
-        """,
-        unsafe_allow_html=True,
-    )
+def render_analyst_portfolio_page():
+    load_analyst_styles()
 
-    result = get_companies(st.session_state.access_token)
-
-    if not result.get("success"):
-        st.warning(result.get("message", "Companiile nu au putut fi încărcate."))
-        return
-
-    companies = result.get("data", [])
-
-    if not companies:
-        st.info("Nu există firme asignate.")
-        return
-
-    df = pd.DataFrame(companies)
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-
-def render_analyst_dashboard():
-    _render_analyst_styles_override()
-
-    st.markdown(
-        f"""
-        <div class="dashboard-header">
-            <div>
-                <div class="page-title-dark">Dashboard analist</div>
-                <div class="page-subtitle-dark">
-                    Gestionează importurile, firmele asignate și cererile de raportare.
-                </div>
-            </div>
-            <div class="user-chip">{st.session_state.username}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    _render_analyst_header(
+        "Portofoliu firme",
+        "Monitorizează firmele asignate, importurile active și situațiile care necesită atenție."
     )
 
     stats_result = get_analyst_dashboard_stats(st.session_state.access_token)
@@ -633,50 +561,112 @@ def render_analyst_dashboard():
 
     with c1:
         st.markdown(
-            metric_card(
+            _analyst_stat_card(
                 "Firme asignate",
                 stats.get("total_firme", 0),
-                "Portofoliu curent",
+                "Portofoliu curent"
             ),
             unsafe_allow_html=True,
         )
 
     with c2:
         st.markdown(
-            metric_card(
+            _analyst_stat_card(
                 "Importuri noi",
                 stats.get("importuri_noi", 0),
-                "În așteptare",
+                "În așteptare"
             ),
             unsafe_allow_html=True,
         )
 
     with c3:
         st.markdown(
-            metric_card(
+            _analyst_stat_card(
                 "Cereri rapoarte",
                 stats.get("cereri_rapoarte_noi", 0),
-                "Pending",
+                "Solicitări client"
             ),
             unsafe_allow_html=True,
         )
 
     with c4:
         st.markdown(
-            metric_card(
+            _analyst_stat_card(
                 "Firme risc ridicat",
                 stats.get("firme_risc_ridicat", 0),
-                "Monitorizare",
+                "Monitorizare"
             ),
             unsafe_allow_html=True,
         )
 
-    st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="analyst-hero analyst-hero-spaced">
+            <div class="analyst-hero-eyebrow">Portofoliu</div>
+            <div class="analyst-hero-title">Firme asignate analistului</div>
+            <div class="analyst-hero-text">
+                Această secțiune centralizează firmele aflate în responsabilitatea analistului.
+                Poți urmări rapid firmele active, domeniul de activitate și datele principale de contact.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    tab1, tab2 = st.tabs(["Importuri", "Firme asignate"])
+    result = get_companies(st.session_state.access_token)
 
-    with tab1:
-        render_uploads_section()
+    if not result.get("success"):
+        st.error(result.get("message", "Companiile nu au putut fi încărcate."))
+        return
 
-    with tab2:
-        render_companies_table()
+    companies = result.get("data", [])
+
+    if not companies:
+        st.markdown(
+            """
+            <div class="analyst-empty-card">
+                Nu există firme asignate acestui analist.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    _render_companies_table(companies)
+
+
+def render_analyst_reports_page():
+    load_analyst_styles()
+
+    _render_analyst_header(
+        "Rapoarte",
+        "Gestionează solicitările de rapoarte și pregătește recomandări personalizate pentru clienți."
+    )
+
+    st.markdown(
+        """
+        <div class="analyst-hero">
+            <div class="analyst-hero-eyebrow">În lucru</div>
+            <div class="analyst-hero-title">Flux rapoarte personalizate</div>
+            <div class="analyst-hero-text">
+                Aici vom integra solicitările de rapoarte, completarea recomandărilor de către analist
+                și generarea documentului PDF pentru client. Începem această secțiune după ce finalizăm pagina de importuri.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="analyst-empty-card">
+            Pagina de rapoarte este pregătită ca structură. Următorul pas este integrarea logicii de backend pentru cereri,
+            completare raport și generare PDF.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_analyst_dashboard():
+    render_analyst_portfolio_page()
