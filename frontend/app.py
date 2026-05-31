@@ -7,6 +7,7 @@ from views.client import (
     render_client_onboarding,
     render_client_imports_page,
     render_client_risk_page,
+    render_client_reports_page,
 )
 from views.analyst import (
     render_analyst_portfolio_page,
@@ -52,6 +53,10 @@ def render_sidebar():
                 st.session_state.page = "client_imports"
                 st.rerun()
 
+            if st.button("Rapoarte", use_container_width=True):
+                st.session_state.page = "client_reports"
+                st.rerun()
+
             if not st.session_state.is_onboarded:
                 if st.button("Onboarding / Upload", use_container_width=True):
                     st.session_state.page = "client_onboarding"
@@ -92,6 +97,8 @@ else:
             render_client_imports_page()
         elif st.session_state.page == "client_risk":
             render_client_risk_page()
+        elif st.session_state.page == "client_reports":
+            render_client_reports_page()
         else:
             render_client_dashboard()
 

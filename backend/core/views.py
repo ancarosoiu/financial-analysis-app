@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status, generics
 from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot, MLModelVersion
 from .serializers import RegisterClientSerializer, RegisterAnalystSerializer,MyTokenObtainPairSerializer
-from .services import process_financial_upload, auto_assign_analyst, validate_upload_before_analyst
+from .services import process_financial_upload, auto_assign_analyst, validate_upload_before_analyst,generate_standard_report_pdf,generate_custom_report_pdf
 from django.db.models import Case, When, IntegerField
 from datetime import timedelta
 from django.http import FileResponse
@@ -884,24 +884,254 @@ class BaseReportListView(APIView):
         try:
             company = Company.objects.for_user(request.user).get(id=company_id)
 
-            reports = BaseReport.objects.filter(snapshot__statement__company=company)
+            reports = BaseReport.objects.filter(
+                snapshot__statement__company=company
+            ).select_related(
+                "snapshot",
+                "snapshot__statement",
+                "snapshot__statement__company",
+            ).order_by("-generated_at")
 
             data = []
+
             for rep in reports:
                 snapshot = rep.snapshot
+                statement = snapshot.statement
+
                 data.append({
                     "id": rep.id,
                     "data_generare": rep.generated_at.strftime("%d/%m/%Y"),
-                    "data_bilant": snapshot.statement.reporting_date.strftime("%d/%m/%Y"),
-                    "probabilitate_faliment": f"{snapshot.bankruptcy_probability}%",
+                    "data_bilant": statement.reporting_date.strftime("%d/%m/%Y"),
+                    "probabilitate_faliment": snapshot.bankruptcy_probability,
                     "status_risc": snapshot.prediction_label,
-                    "pdf_url": rep.pdf_file.url if rep.pdf_file else None
+                    "has_pdf": bool(rep.pdf_file),
                 })
 
             return Response(data)
 
         except Company.DoesNotExist:
-            return Response({"error": "Acces interzis sau firma nu există"}, status=403)
+            return Response(
+                {"error": "Acces interzis sau firma nu există."},
+                status=403,
+            )
+
+class DownloadBaseReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, report_id):
+        try:
+            report = BaseReport.objects.select_related(
+                "snapshot",
+                "snapshot__statement",
+                "snapshot__statement__company",
+                "snapshot__statement__company__owner",
+                "snapshot__statement__company__analyst",
+            ).get(id=report_id)
+
+            company = report.snapshot.statement.company
+            user = request.user
+
+            has_access = (
+                user.is_superuser
+                or user.role == "admin"
+                or company.owner_id == user.id
+                or company.analyst_id == user.id
+            )
+
+            if not has_access:
+                return Response(
+                    {"error": "Nu ai acces la acest raport."},
+                    status=403,
+                )
+
+            report = generate_standard_report_pdf(report)
+
+            if not report.pdf_file:
+                return Response(
+                    {"error": "Raportul standard nu a putut fi generat."},
+                    status=500,
+                )
+
+            file_path = report.pdf_file.path
+
+            if not os.path.exists(file_path):
+                return Response(
+                    {"error": "Fișierul raportului nu a fost găsit pe server."},
+                    status=404,
+                )
+
+            company_part = _clean_filename_part(company.name)
+            date_part = report.snapshot.statement.reporting_date.strftime("%Y-%m-%d")
+            download_name = f"{company_part}_raport_standard_{date_part}.pdf"
+
+            return FileResponse(
+                open(file_path, "rb"),
+                as_attachment=True,
+                filename=download_name,
+            )
+
+        except BaseReport.DoesNotExist:
+            return Response(
+                {"error": "Raportul standard nu există."},
+                status=404,
+            )
+
+
+class ClientReportRequestListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, company_id):
+        try:
+            company = Company.objects.for_user(request.user).get(id=company_id)
+
+            requests_qs = ReportRequest.objects.filter(
+                company=company
+            ).select_related(
+                "company",
+                "analyst",
+            ).order_by("-created_at")
+
+            data = []
+
+            for req in requests_qs:
+                custom_report = getattr(req, "generated_report", None)
+
+                data.append({
+                    "id": req.id,
+                    "company_name": req.company.name,
+                    "analyst_username": req.analyst.username if req.analyst else None,
+                    "client_message": req.client_message,
+                    "status": req.status,
+                    "created_at": req.created_at.strftime("%d/%m/%Y %H:%M"),
+                    "custom_report_id": custom_report.id if custom_report else None,
+                    "has_custom_pdf": bool(custom_report and custom_report.pdf_file),
+                    "generated_at": (
+                        custom_report.generated_at.strftime("%d/%m/%Y %H:%M")
+                        if custom_report else None
+                    ),
+                })
+
+            return Response(data)
+
+        except Company.DoesNotExist:
+            return Response(
+                {"error": "Acces interzis sau firma nu există."},
+                status=403,
+            )
+
+
+class AnalystReportRequestListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "analyst" and not user.is_staff:
+            return Response(
+                {"error": "Acces interzis. Doar analiștii pot consulta solicitările."},
+                status=403,
+            )
+
+        status_filter = request.query_params.get("status", "pending")
+
+        requests_qs = ReportRequest.objects.select_related(
+            "company",
+            "company__owner",
+            "analyst",
+        ).order_by("-created_at")
+
+        if user.role == "analyst" and not user.is_staff:
+            requests_qs = requests_qs.filter(analyst=user)
+
+        if status_filter != "all":
+            requests_qs = requests_qs.filter(status=status_filter)
+
+        data = []
+
+        for req in requests_qs:
+            custom_report = getattr(req, "generated_report", None)
+
+            data.append({
+                "id": req.id,
+                "company_id": req.company.id,
+                "company_name": req.company.name,
+                "cui": req.company.cui,
+                "industry": req.company.industry,
+                "client_username": req.company.owner.username,
+                "analyst_username": req.analyst.username if req.analyst else None,
+                "client_message": req.client_message,
+                "status": req.status,
+                "created_at": req.created_at.strftime("%d/%m/%Y %H:%M"),
+                "custom_report_id": custom_report.id if custom_report else None,
+                "has_custom_pdf": bool(custom_report and custom_report.pdf_file),
+                "generated_at": (
+                    custom_report.generated_at.strftime("%d/%m/%Y %H:%M")
+                    if custom_report else None
+                ),
+            })
+
+        return Response(data)
+
+
+class DownloadCustomReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, report_id):
+        try:
+            report = CustomReport.objects.select_related(
+                "request",
+                "request__company",
+                "request__company__owner",
+                "request__company__analyst",
+                "request__analyst",
+            ).get(id=report_id)
+
+            company = report.request.company
+            user = request.user
+
+            has_access = (
+                user.is_superuser
+                or user.role == "admin"
+                or company.owner_id == user.id
+                or company.analyst_id == user.id
+            )
+
+            if not has_access:
+                return Response(
+                    {"error": "Nu ai acces la acest raport personalizat."},
+                    status=403,
+                )
+
+            report = generate_custom_report_pdf(report)
+
+            if not report.pdf_file:
+                return Response(
+                    {"error": "Raportul personalizat nu a putut fi generat."},
+                    status=500,
+                )
+
+            file_path = report.pdf_file.path
+
+            if not os.path.exists(file_path):
+                return Response(
+                    {"error": "Fișierul raportului nu a fost găsit pe server."},
+                    status=404,
+                )
+
+            company_part = _clean_filename_part(company.name)
+            download_name = f"{company_part}_raport_personalizat_{report.request.id}.pdf"
+
+            return FileResponse(
+                open(file_path, "rb"),
+                as_attachment=True,
+                filename=download_name,
+            )
+
+        except CustomReport.DoesNotExist:
+            return Response(
+                {"error": "Raportul personalizat nu există."},
+                status=404,
+            )
 
 
 class CreateReportRequestView(APIView):
@@ -909,38 +1139,66 @@ class CreateReportRequestView(APIView):
 
     def post(self, request, company_id):
         user = request.user
-        client_message = request.data.get('message', '')
+
+        if user.role != "client":
+            return Response(
+                {"error": "Doar utilizatorii client pot solicita rapoarte personalizate."},
+                status=403,
+            )
+
+        client_message = request.data.get("message", "").strip()
 
         if not client_message:
-            return Response({"error": "Te rugăm să completezi cerințele tale pentru analist."}, status=400)
+            return Response(
+                {"error": "Te rugăm să completezi cerințele tale pentru analist."},
+                status=400,
+            )
 
         try:
             company = Company.objects.for_user(user).get(id=company_id)
+
+            if not company.analyst:
+                return Response(
+                    {
+                        "error": (
+                            "Nu există încă un analist asociat acestei companii. "
+                            "Solicitarea raportului personalizat nu poate fi trimisă momentan."
+                        )
+                    },
+                    status=400,
+                )
 
             report_request = ReportRequest.objects.create(
                 company=company,
                 analyst=company.analyst,
                 client_message=client_message,
-                status='pending'
+                status="pending",
             )
 
-            if company.analyst:
-                from .models import Notification
-                Notification.objects.create(
-                    sender=user,
-                    recipient=company.analyst,
-                    title="Solicitare Raport Nouă",
-                    message=f"Firma {company.name} a solicitat o analiză personalizată.",
-                    action_url=f"/analyst/requests/{report_request.id}"
-                )
+            Notification.objects.create(
+                sender=user,
+                recipient=company.analyst,
+                title="Solicitare raport personalizat",
+                message=(
+                    f"Clientul {user.username} a solicitat o analiză personalizată "
+                    f"pentru firma {company.name}."
+                ),
+                action_url=f"/analyst/reports/{report_request.id}",
+            )
 
-            return Response({
-                "message": "Solicitarea a fost trimisă cu succes către analistul tău!",
-                "request_id": report_request.id
-            }, status=201)
+            return Response(
+                {
+                    "message": "Solicitarea a fost trimisă cu succes către analist.",
+                    "request_id": report_request.id,
+                },
+                status=201,
+            )
 
         except Company.DoesNotExist:
-            return Response({"error": "Firma nu a fost găsită"}, status=404)
+            return Response(
+                {"error": "Firma nu a fost găsită sau nu ai acces la aceasta."},
+                status=404,
+            )
 
 
 class FulfillReportRequestView(APIView):
@@ -949,32 +1207,80 @@ class FulfillReportRequestView(APIView):
     def post(self, request, request_id):
         user = request.user
 
-        if user.role != 'analyst' and not user.is_staff:
-            return Response({"error": "Doar analiștii pot completa rapoarte."}, status=403)
+        if user.role != "analyst" and not user.is_staff:
+            return Response(
+                {"error": "Doar analiștii pot completa rapoarte."},
+                status=403,
+            )
 
         try:
-            report_request = ReportRequest.objects.get(id=request_id, analyst=user)
+            report_request = ReportRequest.objects.select_related(
+                "company",
+                "company__owner",
+                "analyst",
+            ).get(id=request_id)
 
-            if report_request.status == 'completed':
-                return Response({"error": "Acest raport a fost deja finalizat."}, status=400)
+            if user.role == "analyst" and report_request.analyst_id != user.id:
+                return Response(
+                    {"error": "Nu ești analistul asignat acestei solicitări."},
+                    status=403,
+                )
 
-            analyst_message = request.data.get('analyst_message')
-            recommendations = request.data.get('recommendations')
+            if report_request.status == "completed":
+                return Response(
+                    {"error": "Acest raport a fost deja finalizat."},
+                    status=400,
+                )
+
+            analyst_message = request.data.get("analyst_message", "").strip()
+            recommendations = request.data.get("recommendations", "").strip()
+            extra_data = request.data.get("extra_data", {})
+
+            if not analyst_message:
+                return Response(
+                    {"error": "Comentariul analistului este obligatoriu."},
+                    status=400,
+                )
+
+            if not recommendations:
+                return Response(
+                    {"error": "Recomandările sunt obligatorii."},
+                    status=400,
+                )
 
             custom_report = CustomReport.objects.create(
                 request=report_request,
                 analyst_message=analyst_message,
                 expert_recommendations=recommendations,
-                extra_data_json=request.data.get('extra_data', {})
+                extra_data_json=extra_data,
             )
 
-            report_request.status = 'completed'
+            generate_custom_report_pdf(custom_report)
+
+            report_request.status = "completed"
             report_request.save()
 
-            return Response({
-                "message": "Raportul personalizat a fost salvat și trimis clientului!",
-                "report_id": custom_report.id
-            })
+            Notification.objects.create(
+                sender=user,
+                recipient=report_request.company.owner,
+                title="Raport personalizat disponibil",
+                message=(
+                    f"Analistul a finalizat raportul personalizat pentru firma "
+                    f"{report_request.company.name}. Îl poți descărca din pagina de rapoarte."
+                ),
+                action_url=f"/client/reports/{custom_report.id}",
+            )
+
+            return Response(
+                {
+                    "message": "Raportul personalizat a fost generat și trimis clientului.",
+                    "report_id": custom_report.id,
+                },
+                status=200,
+            )
 
         except ReportRequest.DoesNotExist:
-            return Response({"error": "Cererea nu a fost găsită sau nu ești asignat pe ea."}, status=404)
+            return Response(
+                {"error": "Cererea nu a fost găsită sau nu ești asignat pe ea."},
+                status=404,
+            )

@@ -262,3 +262,199 @@ def review_upload(upload_id: int, decision: str, access_token: str, reason: str 
             "success": False,
             "message": "Importul nu a putut fi procesat."
         }
+
+def get_standard_reports(company_id: int, access_token: str):
+    url = f"{BASE_URL}/companies/{company_id}/reports/standard/"
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=10,
+        )
+        return handle_response(response)
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Rapoartele standard nu au putut fi încărcate.",
+        }
+
+
+def download_standard_report(report_id: int, access_token: str):
+    url = f"{BASE_URL}/reports/standard/{report_id}/download/"
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=30,
+        )
+
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+                message = (
+                    data.get("detail")
+                    or data.get("message")
+                    or data.get("error")
+                    or "Raportul standard nu a putut fi descărcat."
+                )
+            except Exception:
+                message = "Raportul standard nu a putut fi descărcat."
+
+            return {
+                "success": False,
+                "message": message,
+            }
+
+        return {
+            "success": True,
+            "content": response.content,
+            "content_type": response.headers.get(
+                "Content-Type",
+                "application/pdf",
+            ),
+        }
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Nu s-a putut realiza descărcarea raportului standard.",
+        }
+
+
+def create_report_request(company_id: int, message: str, access_token: str):
+    url = f"{BASE_URL}/companies/{company_id}/reports/request/"
+    payload = {
+        "message": message,
+    }
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            headers=auth_headers(access_token),
+            timeout=15,
+        )
+        return handle_response(response)
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Solicitarea raportului personalizat nu a putut fi trimisă.",
+        }
+
+
+def get_client_report_requests(company_id: int, access_token: str):
+    url = f"{BASE_URL}/companies/{company_id}/reports/requests/"
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=10,
+        )
+        return handle_response(response)
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Solicitările de rapoarte nu au putut fi încărcate.",
+        }
+
+
+def get_analyst_report_requests(access_token: str, status: str = "pending"):
+    url = f"{BASE_URL}/analyst/reports/requests/"
+    params = {
+        "status": status,
+    }
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            params=params,
+            timeout=10,
+        )
+        return handle_response(response)
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Solicitările de rapoarte nu au putut fi încărcate.",
+        }
+
+
+def fulfill_report_request(
+    request_id: int,
+    analyst_message: str,
+    recommendations: str,
+    access_token: str,
+    extra_data: dict | None = None,
+):
+    url = f"{BASE_URL}/reports/requests/{request_id}/fulfill/"
+
+    payload = {
+        "analyst_message": analyst_message,
+        "recommendations": recommendations,
+        "extra_data": extra_data or {},
+    }
+
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            headers=auth_headers(access_token),
+            timeout=30,
+        )
+        return handle_response(response)
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Raportul personalizat nu a putut fi finalizat.",
+        }
+
+
+def download_custom_report(report_id: int, access_token: str):
+    url = f"{BASE_URL}/reports/custom/{report_id}/download/"
+
+    try:
+        response = requests.get(
+            url,
+            headers=auth_headers(access_token),
+            timeout=30,
+        )
+
+        if response.status_code >= 400:
+            try:
+                data = response.json()
+                message = (
+                    data.get("detail")
+                    or data.get("message")
+                    or data.get("error")
+                    or "Raportul personalizat nu a putut fi descărcat."
+                )
+            except Exception:
+                message = "Raportul personalizat nu a putut fi descărcat."
+
+            return {
+                "success": False,
+                "message": message,
+            }
+
+        return {
+            "success": True,
+            "content": response.content,
+            "content_type": response.headers.get(
+                "Content-Type",
+                "application/pdf",
+            ),
+        }
+
+    except requests.RequestException:
+        return {
+            "success": False,
+            "message": "Nu s-a putut realiza descărcarea raportului personalizat.",
+        }

@@ -11,14 +11,18 @@ from .views import (
     DashboardDataView,
     ClientUploadHistoryView,
     BaseReportListView,
+    DownloadBaseReportView,
     CreateReportRequestView,
+    ClientReportRequestListView,
+    AnalystReportRequestListView,
     FulfillReportRequestView,
+    DownloadCustomReportView,
     MyTokenObtainPairView,
     RegisterClientView,
     RegisterAnalystView,
     AnalystDashboardStatsView,
     AnalystPendingUploadsView,
-    AnalystUploadsView
+    AnalystUploadsView,
 )
 
 urlpatterns = [
@@ -41,8 +45,12 @@ urlpatterns = [
     path("uploads/<int:upload_id>/download/",DownloadFinancialUploadView.as_view(),name="download-financial-upload"),
 
     path('companies/<int:company_id>/reports/standard/', BaseReportListView.as_view(), name='report-standard-list'),
-    path('companies/<int:company_id>/reports/request/', CreateReportRequestView.as_view(), name='report-request-create'),
+    path('reports/standard/<int:report_id>/download/', DownloadBaseReportView.as_view(),name='report-standard-download'),
+    path('companies/<int:company_id>/reports/request/', CreateReportRequestView.as_view(),name='report-request-create'),
+    path('companies/<int:company_id>/reports/requests/', ClientReportRequestListView.as_view(),name='client-report-requests'),
+    path('analyst/reports/requests/', AnalystReportRequestListView.as_view(), name='analyst-report-requests'),
     path('reports/requests/<int:request_id>/fulfill/', FulfillReportRequestView.as_view(), name='report-fulfill'),
+    path('reports/custom/<int:report_id>/download/', DownloadCustomReportView.as_view(), name='report-custom-download'),
 
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/<int:pk>/read/', MarkNotificationReadView.as_view(), name='notification-read'),

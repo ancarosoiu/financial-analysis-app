@@ -1,10 +1,27 @@
 import pandas as pd
 import numpy as np
+
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count
+from django.core.files.base import ContentFile
+from xml.sax.saxutils import escape as xml_escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from .ml_service import predict_risk
 from .models import FinancialUpload, FinancialStatement, KPISnapshot, BaseReport
@@ -812,3 +829,483 @@ def process_financial_upload(upload_instance):
         upload_instance.save()
 
         return False, error_message
+
+def _pdf_text(value):
+    """
+    Normalizeaza textul pentru PDF.
+    Folosim varianta fara diacritice ca sa evitam patratelele generate de fonturile standard ReportLab.
+    """
+
+    if value is None:
+        return ""
+
+    text = str(value)
+
+    replacements = {
+        "ă": "a", "Ă": "A",
+        "â": "a", "Â": "A",
+        "î": "i", "Î": "I",
+        "ș": "s", "Ș": "S",
+        "ş": "s", "Ş": "S",
+        "ț": "t", "Ț": "T",
+        "ţ": "t", "Ţ": "T",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    return text
+
+
+def _pdf_paragraph(value):
+    text = _pdf_text(value)
+    text = xml_escape(text)
+    text = text.replace("\n", "<br/>")
+    return text
+
+
+def _fmt_report_value(value, suffix=""):
+    if value is None:
+        return "N/A"
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return _pdf_text(value)
+
+    if suffix == "%":
+        return f"{value:.2f}%"
+
+    return f"{value:,.2f}"
+
+
+def _fmt_report_money(value):
+    return f"{_fmt_report_value(value)} RON"
+
+
+def _risk_interpretation(probability):
+    try:
+        probability = float(probability or 0)
+    except (TypeError, ValueError):
+        probability = 0
+
+    if probability < 30:
+        return (
+            "Risc scazut",
+            "Compania prezinta o probabilitate redusa de dificultate financiara conform modelului predictiv."
+        )
+
+    if probability < 60:
+        return (
+            "Risc mediu",
+            "Compania necesita monitorizare atenta, deoarece exista semnale financiare care pot indica vulnerabilitati."
+        )
+
+    return (
+        "Risc ridicat",
+        "Compania prezinta semnale financiare importante, care necesita analiza suplimentara si masuri de corectie."
+    )
+
+
+def _build_pdf_document(title):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=1.7 * cm,
+        bottomMargin=1.7 * cm,
+        title=_pdf_text(title),
+    )
+
+    styles = getSampleStyleSheet()
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportTitle",
+            parent=styles["Title"],
+            fontName="Helvetica-Bold",
+            fontSize=17,
+            leading=22,
+            textColor=colors.black,
+            alignment=1,
+            spaceAfter=8,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSubtitle",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=9,
+            leading=13,
+            textColor=colors.HexColor("#333333"),
+            alignment=1,
+            spaceAfter=16,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSection",
+            parent=styles["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=11,
+            leading=14,
+            textColor=colors.black,
+            spaceBefore=12,
+            spaceAfter=7,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportBody",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=9,
+            leading=13,
+            textColor=colors.black,
+            spaceAfter=7,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSmall",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=8,
+            leading=11,
+            textColor=colors.HexColor("#333333"),
+            spaceAfter=5,
+        )
+    )
+
+    return buffer, doc, styles
+
+
+def _mono_table(rows, col_widths=None):
+    if col_widths is None:
+        col_widths = [7.5 * cm, 7.5 * cm]
+
+    safe_rows = []
+
+    for row in rows:
+        safe_rows.append([
+            Paragraph(_pdf_paragraph(cell), getSampleStyleSheet()["BodyText"])
+            for cell in row
+        ])
+
+    table = Table(safe_rows, colWidths=col_widths, hAlign="LEFT")
+
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#777777")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    return table
+
+
+def _metadata_table(rows):
+    return _mono_table(
+        rows,
+        col_widths=[5.0 * cm, 10.0 * cm],
+    )
+
+
+def generate_standard_report_pdf(base_report):
+    """
+    Genereaza raportul standard in format PDF.
+    Template-ul este alb-negru, sobru si fara diacritice, pentru compatibilitate sigura cu ReportLab.
+    PDF-ul se regenereaza la download ca sa foloseasca mereu template-ul curent.
+    """
+
+    if base_report.pdf_file:
+        base_report.pdf_file.delete(save=False)
+
+    snapshot = base_report.snapshot
+    statement = snapshot.statement
+    company = statement.company
+
+    buffer, doc, styles = _build_pdf_document("Raport financiar standard")
+
+    risk_label, risk_text = _risk_interpretation(snapshot.bankruptcy_probability)
+
+    prediction_label = snapshot.prediction_label or risk_label
+
+    elements = []
+
+    elements.append(Paragraph("RAPORT FINANCIAR STANDARD", styles["ReportTitle"]))
+
+    elements.append(
+        Paragraph(
+            "Document generat automat pe baza datelor financiare validate, "
+            "a indicatorilor calculati si a rezultatului modelului predictiv.",
+            styles["ReportSubtitle"],
+        )
+    )
+
+    elements.append(Paragraph("1. Date generale", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Companie", company.name],
+                ["CUI", company.cui],
+                ["Perioada analizata", statement.reporting_date.strftime("%d/%m/%Y")],
+                ["Data generarii", timezone.now().strftime("%d/%m/%Y %H:%M")],
+                ["Tip raport", "Raport standard generat automat"],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("2. Sinteza financiara", styles["ReportSection"]))
+
+    elements.append(
+        _mono_table(
+            [
+                ["Indicator", "Valoare"],
+                ["Venituri din vanzari", _fmt_report_money(statement.sales_revenue)],
+                ["Profit net", _fmt_report_money(statement.net_profit)],
+                ["EBIT", _fmt_report_money(statement.ebit)],
+                ["Active totale", _fmt_report_money(statement.total_assets)],
+                ["Datorii totale", _fmt_report_money(statement.total_liabilities)],
+                ["Capitaluri proprii", _fmt_report_money(statement.equity)],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("3. Indicatori financiari calculati", styles["ReportSection"]))
+
+    elements.append(
+        _mono_table(
+            [
+                ["Indicator", "Valoare"],
+                ["Rentabilitate active", _fmt_report_value(snapshot.x1)],
+                ["Grad de indatorare", _fmt_report_value(snapshot.x2)],
+                ["Capital de lucru / active", _fmt_report_value(snapshot.x3)],
+                ["Lichiditate curenta", _fmt_report_value(snapshot.x4)],
+                ["EBIT / active", _fmt_report_value(snapshot.x7)],
+                ["Solvabilitate", _fmt_report_value(snapshot.x10)],
+                ["Marja profitului net", _fmt_report_value(snapshot.x23)],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("4. Rezultat model predictiv", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Incadrare risc", prediction_label],
+                ["Probabilitate estimata", _fmt_report_value(snapshot.bankruptcy_probability, "%")],
+                ["Interpretare", risk_text],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("5. Factori explicativi", styles["ReportSection"]))
+
+    shap_data = snapshot.feature_importance_data or {}
+    top_factors = shap_data.get("top_factors", []) if isinstance(shap_data, dict) else []
+
+    if top_factors:
+        factor_rows = [["Indicator", "Impact", "Valoare indicator"]]
+
+        for factor in top_factors[:8]:
+            indicator = str(factor.get("indicator", "")).upper()
+            shap_value = _fmt_report_value(factor.get("shap_value"))
+            feature_value = _fmt_report_value(factor.get("feature_value"))
+            factor_rows.append([indicator, shap_value, feature_value])
+
+        elements.append(
+            _mono_table(
+                factor_rows,
+                col_widths=[4.0 * cm, 5.0 * cm, 6.0 * cm],
+            )
+        )
+    else:
+        elements.append(
+            Paragraph(
+                "Pentru aceasta perioada nu exista factori explicativi disponibili.",
+                styles["ReportBody"],
+            )
+        )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("6. Observatie metodologica", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            "Raportul standard are rol informativ si reprezinta un instrument de sprijin "
+            "pentru analiza financiara. Rezultatul modelului predictiv nu trebuie interpretat "
+            "ca decizie financiara definitiva, ci ca semnal analitic bazat pe datele disponibile.",
+            styles["ReportBody"],
+        )
+    )
+
+    doc.build(elements)
+
+    file_name = f"raport_standard_{company.id}_{statement.reporting_date}.pdf"
+
+    base_report.pdf_file.save(
+        file_name,
+        ContentFile(buffer.getvalue()),
+        save=True,
+    )
+
+    buffer.close()
+
+    return base_report
+
+
+def generate_custom_report_pdf(custom_report):
+    if custom_report.pdf_file:
+        custom_report.pdf_file.delete(save=False)
+
+    report_request = custom_report.request
+    company = report_request.company
+    analyst = report_request.analyst
+
+    buffer, doc, styles = _build_pdf_document("Raport financiar personalizat")
+
+    elements = []
+
+    elements.append(Paragraph("RAPORT FINANCIAR PERSONALIZAT", styles["ReportTitle"]))
+
+    elements.append(
+        Paragraph(
+            "Document intocmit pe baza solicitarii clientului si a interpretarii analistului financiar.",
+            styles["ReportSubtitle"],
+        )
+    )
+
+    elements.append(Paragraph("1. Date generale", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Companie", company.name],
+                ["CUI", company.cui],
+                ["Analist", analyst.username if analyst else "N/A"],
+                ["Data solicitarii", report_request.created_at.strftime("%d/%m/%Y %H:%M")],
+                ["Data generarii", timezone.now().strftime("%d/%m/%Y %H:%M")],
+                ["Tip raport", "Raport personalizat"],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("2. Solicitarea clientului", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(report_request.client_message),
+            styles["ReportBody"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph("3. Observatii analist", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(custom_report.analyst_message or "Nu a fost completat un comentariu."),
+            styles["ReportBody"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph("4. Recomandari personalizate", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(custom_report.expert_recommendations or "Nu au fost completate recomandari."),
+            styles["ReportBody"],
+        )
+    )
+
+    extra_data = custom_report.extra_data_json or {}
+
+    if isinstance(extra_data, dict) and extra_data:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("5. Detalii suplimentare", styles["ReportSection"]))
+
+        rows = [["Categorie", "Observatie"]]
+
+        for key, value in extra_data.items():
+            if value:
+                rows.append([key, value])
+
+        if len(rows) > 1:
+            elements.append(
+                _mono_table(
+                    rows,
+                    col_widths=[5.5 * cm, 9.5 * cm],
+                )
+            )
+        else:
+            elements.append(
+                Paragraph(
+                    "Nu au fost completate detalii suplimentare.",
+                    styles["ReportBody"],
+                )
+            )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("6. Observatie finala", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            "Raportul personalizat completeaza raportul standard generat automat si include "
+            "interpretari formulate de analistul financiar in functie de cerinta transmisa de client.",
+            styles["ReportBody"],
+        )
+    )
+
+    doc.build(elements)
+
+    file_name = f"raport_personalizat_cerere_{report_request.id}.pdf"
+
+    custom_report.pdf_file.save(
+        file_name,
+        ContentFile(buffer.getvalue()),
+        save=True,
+    )
+
+    buffer.close()
+
+    return custom_report

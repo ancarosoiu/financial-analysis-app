@@ -3,13 +3,19 @@ import pandas as pd
 import ast
 import plotly.express as px
 from html import escape
+from datetime import datetime,date, timedelta
 
 from api import (
     create_company,
     get_client_dashboard,
     upload_financial_file,
     get_upload_history,
-    download_upload_file
+    download_upload_file,
+    get_standard_reports,
+    download_standard_report,
+    create_report_request,
+    get_client_report_requests,
+    download_custom_report,
 )
 
 from views.styles import (
@@ -1978,3 +1984,536 @@ def render_client_dashboard():
         use_container_width=True,
         hide_index=True,
     )
+
+def _client_report_status_label(status: str):
+    labels = {
+        "pending": "În așteptare",
+        "in_progress": "În lucru",
+        "completed": "Finalizat",
+    }
+    return labels.get(status, status or "—")
+
+
+def _client_report_status_badge(status: str):
+    label = _client_report_status_label(status)
+
+    if status == "completed":
+        css_class = "client-report-status-completed"
+    elif status == "in_progress":
+        css_class = "client-report-status-progress"
+    else:
+        css_class = "client-report-status-pending"
+
+    return f'<span class="client-report-status-badge {css_class}">{label}</span>'
+
+
+def _fmt_report_probability(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "N/A"
+
+    return f"{value:.2f}%"
+
+
+@st.dialog("Solicitare raport personalizat", width="large")
+def render_client_report_request_modal():
+    st.markdown(
+        """
+        <div class="review-modal-header">
+            <div class="review-modal-icon">✎</div>
+            <div>
+                <div class="review-modal-title">Solicitare raport personalizat</div>
+                <div class="review-modal-subtitle">
+                    Transmite analistului cerințele tale pentru o interpretare suplimentară.
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="review-warning-box">
+            <div class="review-warning-title">Recomandare</div>
+            <div class="review-warning-text">
+                Scrie clar ce vrei să urmărească analistul: lichiditate, profitabilitate,
+                îndatorare, risc financiar, evoluția veniturilor sau recomandări de îmbunătățire.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    focus_area = st.selectbox(
+        "Zona principală de interes",
+        [
+            "Analiză generală",
+            "Lichiditate",
+            "Profitabilitate",
+            "Îndatorare și solvabilitate",
+            "Risc financiar",
+            "Evoluția veniturilor și profitului",
+            "Recomandări de îmbunătățire",
+        ],
+    )
+
+    message = st.text_area(
+        "Cerința pentru analist",
+        placeholder=(
+            "Exemplu: Aș dori o interpretare a riscului financiar curent și recomandări "
+            "privind îmbunătățirea lichidității și reducerea gradului de îndatorare."
+        ),
+        height=170,
+    )
+
+    col_cancel, col_submit = st.columns([1, 1])
+
+    with col_cancel:
+        if st.button("Anulează", use_container_width=True):
+            st.rerun()
+
+    with col_submit:
+        submit_clicked = st.button("Trimite solicitarea", use_container_width=True)
+
+    if submit_clicked:
+        company_id = st.session_state.company_id
+
+        if not company_id:
+            st.error("Nu există companie asociată contului.")
+            return
+
+        clean_message = message.strip()
+
+        if not clean_message:
+            st.warning("Completează cerința pentru analist înainte de trimitere.")
+            return
+
+        final_message = (
+            f"Zonă principală de interes: {focus_area}\n\n"
+            f"Cerință client:\n{clean_message}"
+        )
+
+        with st.spinner("Se trimite solicitarea către analist..."):
+            result = create_report_request(
+                company_id=company_id,
+                message=final_message,
+                access_token=st.session_state.access_token,
+            )
+
+        if result.get("success"):
+            st.success("Solicitarea a fost trimisă cu succes către analist.")
+            st.rerun()
+
+        st.error(result.get("message", "Solicitarea nu a putut fi trimisă."))
+
+
+def render_client_standard_report_row(report: dict):
+    report_id = report.get("id")
+    balance_date = escape(str(report.get("data_bilant") or "—"))
+    generated_at = escape(str(report.get("data_generare") or "—"))
+    risk_status = escape(str(report.get("status_risc") or "—"))
+    probability = _fmt_report_probability(report.get("probabilitate_faliment"))
+
+    col_period, col_risk, col_generated, col_action = st.columns(
+        [1.35, 1.25, 1.15, 0.95],
+        vertical_alignment="center",
+    )
+
+    with col_period:
+        st.markdown(
+            f"""
+            <div class="client-report-main">Raport standard</div>
+            <div class="client-report-sub">Perioadă bilanțieră: {balance_date}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_risk:
+        st.markdown(
+            f"""
+            <div class="client-report-main">{risk_status}</div>
+            <div class="client-report-sub">Probabilitate: {probability}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_generated:
+        st.markdown(
+            f"""
+            <div class="client-report-main">{generated_at}</div>
+            <div class="client-report-sub">Generat automat</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_action:
+        if not report_id:
+            st.markdown(
+                '<span class="client-import-download-disabled">Indisponibil</span>',
+                unsafe_allow_html=True,
+            )
+        else:
+            download_result = download_standard_report(
+                report_id=report_id,
+                access_token=st.session_state.access_token,
+            )
+
+            if download_result.get("success"):
+                st.download_button(
+                    label="Descarcă PDF",
+                    data=download_result.get("content"),
+                    file_name=f"raport_standard_{report_id}.pdf",
+                    mime=download_result.get("content_type", "application/pdf"),
+                    use_container_width=True,
+                    key=f"client_download_standard_report_{report_id}",
+                )
+            else:
+                st.markdown(
+                    '<span class="client-import-download-disabled">Indisponibil</span>',
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown('<div class="client-report-row-divider"></div>', unsafe_allow_html=True)
+
+
+def render_client_standard_reports_section(reports: list, period_options: list):
+    with st.container():
+        st.markdown(
+            '<div class="client-report-card-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        top_left, top_right = st.columns([2.6, 1], vertical_alignment="bottom")
+
+        with top_left:
+            st.markdown(
+                """
+                <div class="client-report-section-top">
+                    <div class="client-report-table-title">Rapoarte standard</div>
+                    <div class="client-report-table-subtitle">
+                        Rapoarte PDF generate automat pe baza KPI-urilor și predicției de risc.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with top_right:
+            selected_period = st.selectbox(
+                "Filtrează după perioadă",
+                options=period_options,
+                index=(
+                    period_options.index(st.session_state.client_report_period_filter)
+                    if st.session_state.client_report_period_filter in period_options
+                    else 0
+                ),
+                key="client_report_period_filter",
+            )
+
+        st.markdown(
+            """
+            <div class="client-report-header client-report-standard-header">
+                <div>Raport</div>
+                <div>Risc estimat</div>
+                <div>Data generării</div>
+                <div>Acțiuni</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    filtered_reports = _filter_standard_reports_by_period(
+        reports,
+        selected_period,
+    )
+
+    if not filtered_reports:
+        st.markdown(
+            """
+            <div class="client-report-empty-row">
+                Nu există rapoarte standard pentru perioada selectată.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return selected_period
+
+    for report in filtered_reports:
+        render_client_standard_report_row(report)
+
+    return selected_period
+
+def render_client_custom_request_row(request_item: dict):
+    request_id = request_item.get("id")
+    status = request_item.get("status")
+    created_at = escape(str(request_item.get("created_at") or "—"))
+    analyst_username = escape(str(request_item.get("analyst_username") or "—"))
+    message = escape(str(request_item.get("client_message") or "—"))
+
+    if len(message) > 120:
+        message = message[:120].rstrip() + "..."
+
+    custom_report_id = request_item.get("custom_report_id")
+
+    col_request, col_date, col_status, col_action = st.columns(
+        [2.15, 1.15, 0.95, 0.95],
+        vertical_alignment="center",
+    )
+
+    with col_request:
+        st.markdown(
+            f"""
+            <div class="client-report-main">Solicitare #{request_id}</div>
+            <div class="client-report-sub">{message}</div>
+            <div class="client-report-sub">Analist: {analyst_username}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_date:
+        st.markdown(
+            f"""
+            <div class="client-report-main">{created_at}</div>
+            <div class="client-report-sub">Data solicitării</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_status:
+        st.markdown(
+            _client_report_status_badge(status),
+            unsafe_allow_html=True,
+        )
+
+    with col_action:
+        if status == "completed" and custom_report_id:
+            download_result = download_custom_report(
+                report_id=custom_report_id,
+                access_token=st.session_state.access_token,
+            )
+
+            if download_result.get("success"):
+                st.download_button(
+                    label="Descarcă PDF",
+                    data=download_result.get("content"),
+                    file_name=f"raport_personalizat_{custom_report_id}.pdf",
+                    mime=download_result.get("content_type", "application/pdf"),
+                    use_container_width=True,
+                    key=f"client_download_custom_report_{custom_report_id}",
+                )
+            else:
+                st.markdown(
+                    '<span class="client-import-download-disabled">Indisponibil</span>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.markdown(
+                """
+                <div class="client-report-muted-action">
+                    În așteptare
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown('<div class="client-report-row-divider"></div>', unsafe_allow_html=True)
+
+
+def render_client_custom_requests_section(requests_list: list):
+    st.markdown(
+        """
+        <div class="client-report-card-anchor"></div>
+        <div class="client-report-section-top">
+            <div>
+                <div class="client-report-table-title">Solicitări personalizate</div>
+                <div class="client-report-table-subtitle">
+                    Istoricul cererilor transmise către analist și rapoartele personalizate disponibile.
+                </div>
+            </div>
+        </div>
+
+        <div class="client-report-header client-report-custom-header">
+            <div>Solicitare</div>
+            <div>Data cererii</div>
+            <div>Status</div>
+            <div>Acțiuni</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if not requests_list:
+        st.markdown(
+            """
+            <div class="client-report-empty-row">
+                Nu există încă solicitări de rapoarte personalizate.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    for request_item in requests_list:
+        render_client_custom_request_row(request_item)
+
+def _parse_ro_date(value):
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    formats = [
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _is_in_selected_period(value, selected_period: str):
+    parsed_date = _parse_ro_date(value)
+
+    if selected_period == "Toate":
+        return True
+
+    if parsed_date is None:
+        return False
+
+    today = date.today()
+
+    if selected_period == "Ultimele 30 zile":
+        return parsed_date >= today - timedelta(days=30)
+
+    if selected_period == "Ultimele 3 luni":
+        return parsed_date >= today - timedelta(days=90)
+
+    if selected_period == "Ultimele 6 luni":
+        return parsed_date >= today - timedelta(days=180)
+
+    if selected_period == "Ultimele 12 luni":
+        return parsed_date >= today - timedelta(days=365)
+
+    if selected_period == "Anul curent":
+        return parsed_date.year == today.year
+
+    return True
+
+
+def _filter_standard_reports_by_period(reports: list, selected_period: str):
+    return [
+        report for report in reports
+        if _is_in_selected_period(report.get("data_bilant"), selected_period)
+    ]
+
+
+def _filter_custom_requests_by_period(requests_list: list, selected_period: str):
+    return [
+        request_item for request_item in requests_list
+        if _is_in_selected_period(request_item.get("created_at"), selected_period)
+    ]
+
+def render_client_reports_page():
+    _render_client_imports_styles_override()
+
+    report_period_options = [
+        "Toate",
+        "Ultimele 30 zile",
+        "Ultimele 3 luni",
+        "Ultimele 6 luni",
+        "Ultimele 12 luni",
+        "Anul curent",
+    ]
+
+    if "client_report_period_filter" not in st.session_state:
+        st.session_state.client_report_period_filter = "Toate"
+
+    header_left, header_right = st.columns([2.4, 1], vertical_alignment="center")
+
+    with header_left:
+        st.markdown(
+            """
+            <div class="dashboard-header compact-header">
+                <div>
+                    <div class="page-title-dark">Rapoarte financiare</div>
+                    <div class="page-subtitle-dark">
+                        Descarcă rapoarte standard sau solicită o interpretare personalizată de la analist.
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with header_right:
+        st.markdown(
+            '<div class="client-import-action-space"></div>',
+            unsafe_allow_html=True,
+        )
+
+        if st.button("Solicită raport personalizat", use_container_width=True):
+            render_client_report_request_modal()
+
+    company_id = st.session_state.company_id
+
+    if not company_id:
+        st.info("Nu există companie asociată contului.")
+        return
+
+    standard_result = get_standard_reports(
+        company_id=company_id,
+        access_token=st.session_state.access_token,
+    )
+
+    requests_result = get_client_report_requests(
+        company_id=company_id,
+        access_token=st.session_state.access_token,
+    )
+
+    if not standard_result.get("success"):
+        st.error(standard_result.get("message", "Rapoartele standard nu au putut fi încărcate."))
+        return
+
+    if not requests_result.get("success"):
+        st.error(requests_result.get("message", "Solicitările de rapoarte nu au putut fi încărcate."))
+        return
+
+    standard_reports = standard_result.get("data", [])
+    custom_requests = requests_result.get("data", [])
+
+    st.markdown(
+        """
+        <div class="client-report-hero">
+            <div class="client-report-hero-eyebrow">Centru rapoarte</div>
+            <div class="client-report-hero-title">Analiză automată și recomandări personalizate</div>
+            <div class="client-report-hero-text">
+                Raportul standard sintetizează rezultatele calculate automat de sistem.
+                Pentru interpretări suplimentare, poți transmite o solicitare către analistul financiar.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    selected_period = render_client_standard_reports_section(
+        standard_reports,
+        report_period_options,
+    )
+
+    st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
+
+    filtered_custom_requests = _filter_custom_requests_by_period(
+        custom_requests,
+        selected_period,
+    )
+
+    render_client_custom_requests_section(filtered_custom_requests)

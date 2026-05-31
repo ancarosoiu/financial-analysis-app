@@ -1849,6 +1849,200 @@ def load_global_styles():
         }
         
         /* =========================
+           CLIENT REPORTS PAGE
+        ========================= */
+        .client-report-hero {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.13), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 22px;
+            padding: 24px 26px;
+            margin-top: 1.1rem;
+            margin-bottom: 1.2rem;
+            box-shadow:
+                0 14px 36px rgba(0, 0, 0, 0.25),
+                0 0 34px rgba(37, 99, 235, 0.08);
+        }
+        
+        .client-report-hero-eyebrow {
+            color: #60a5fa;
+            font-size: 0.78rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .client-report-hero-title {
+            color: #f8fafc;
+            font-size: 1.35rem;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+            margin-bottom: 8px;
+        }
+        
+        .client-report-hero-text {
+            color: #9fb7de;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            max-width: 900px;
+        }
+        
+        .client-report-card-anchor {
+            display: none;
+        }
+        
+        /* Cardul mare care conține titlul, filtrul și headerul tabelului */
+        div[data-testid="stVerticalBlock"]:has(.client-report-card-anchor) {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 22px;
+            padding: 22px 24px 18px 24px;
+            margin-top: 1.25rem;
+            margin-bottom: 18px;
+            box-shadow:
+                0 14px 36px rgba(0, 0, 0, 0.25),
+                0 0 34px rgba(37, 99, 235, 0.08);
+            overflow: visible;
+        }
+        
+        .client-report-section-top {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .client-report-table-title {
+            color: #f8fafc;
+            font-size: 1.25rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 5px;
+        }
+        
+        .client-report-table-subtitle {
+            color: #8fa3c4;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            margin-bottom: 0;
+        }
+        
+        /* Header tabel, exact ca la importuri: linie internă, fără border separat */
+        .client-report-header {
+            position: relative;
+            display: grid;
+            gap: 18px;
+            align-items: center;
+            padding: 22px 2px 10px 2px;
+            margin-top: 18px;
+            margin-bottom: 0;
+            border: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            color: #93a7c5;
+            font-size: 0.76rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            box-shadow: none !important;
+        }
+        
+        .client-report-header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(148, 163, 184, 0.16);
+        }
+        
+        .client-report-standard-header {
+            grid-template-columns: 1.35fr 1.25fr 1.15fr 0.95fr;
+        }
+        
+        .client-report-custom-header {
+            grid-template-columns: 2.15fr 1.15fr 0.95fr 0.95fr;
+        }
+        
+        .client-report-main {
+            color: #f8fafc;
+            font-size: 0.94rem;
+            font-weight: 850;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        
+        .client-report-sub {
+            color: #8fa3c4;
+            font-size: 0.82rem;
+            margin-top: 4px;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        
+        .client-report-row-divider {
+            height: 1px;
+            background: rgba(148, 163, 184, 0.15);
+            margin: 18px 0;
+        }
+        
+        .client-report-empty-row {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 34%),
+                linear-gradient(180deg, rgba(16, 35, 60, 0.55) 0%, rgba(11, 27, 49, 0.65) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            border-radius: 18px;
+            padding: 22px 24px;
+            margin-top: 0.6rem;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            font-weight: 650;
+        }
+        
+        .client-report-status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 0.78rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        
+        .client-report-status-pending {
+            background: rgba(249, 115, 22, 0.16);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.35);
+        }
+        
+        .client-report-status-progress {
+            background: rgba(59, 130, 246, 0.16);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+        
+        .client-report-status-completed {
+            background: rgba(34, 197, 94, 0.16);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+        }
+        
+        .client-report-muted-action {
+            color: #8fa3c4;
+            font-size: 0.86rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        
+       /* =========================
            SOFTER MODAL LOOK
         ========================= */
         dialog::backdrop {
@@ -1858,17 +2052,17 @@ def load_global_styles():
         
         div[data-testid="stDialog"] div[role="dialog"] {
             border-radius: 22px !important;
-            border: 1px solid rgba(96, 165, 250, 0.24) !important;
+            border: 1px solid rgba(96, 165, 250, 0.20) !important;
             box-shadow:
-                0 30px 90px rgba(2, 6, 23, 0.62),
-                0 0 55px rgba(37, 99, 235, 0.16) !important;
+                0 30px 90px rgba(2, 6, 23, 0.58),
+                0 0 45px rgba(37, 99, 235, 0.12) !important;
             background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
-                linear-gradient(180deg, #e8eef8 0%, #dbe6f5 100%) !important;
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.06), transparent 34%),
+                linear-gradient(180deg, #dbe5f2 0%, #cfdbea 100%) !important;
             padding: 0 !important;
         }
         
-        /* Ascunde titlul nativ al st.dialog, dar păstrează conținutul nostru custom */
+        /* Ascunde titlul nativ al st.dialog, dar păstrează headerul custom */
         div[data-testid="stDialog"] h2,
         div[role="dialog"] h2,
         div[data-testid="stDialog"] [data-testid="stDialogTitle"],
@@ -1888,21 +2082,21 @@ def load_global_styles():
             align-items: center;
             gap: 14px;
             padding: 24px 28px 18px 28px;
-            border-bottom: 1px solid rgba(100, 116, 139, 0.22);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.20);
         }
         
         .review-modal-icon {
             width: 52px;
             height: 52px;
             border-radius: 16px;
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            background: linear-gradient(135deg, #c7dbf6 0%, #a9c8f2 100%);
             color: #2563eb !important;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
             font-weight: 900;
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.16);
+            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
         }
         
         .review-modal-title {
@@ -1918,57 +2112,126 @@ def load_global_styles():
             margin-top: 4px;
         }
         
+        /* Chenarul de recomandare - mai discret, nu galben agresiv */
         .review-warning-box {
-            background: #fef3c7;
-            border: 1px solid #f59e0b;
+            background: rgba(248, 250, 252, 0.58) !important;
+            border: 1px solid rgba(148, 163, 184, 0.42) !important;
             border-radius: 16px;
             padding: 15px 16px;
             margin: 18px 0;
         }
         
         .review-warning-title {
-            color: #78350f !important;
+            color: #1e3a5f !important;
             font-weight: 900;
             margin-bottom: 5px;
         }
         
         .review-warning-text {
-            color: #78350f !important;
+            color: #334155 !important;
             font-size: 0.92rem;
             line-height: 1.5;
             font-weight: 600;
         }
         
-        /* Mesajele Streamlit warning/error din modala de upload */
+        
+        /* Label-uri din modală */
+        div[data-testid="stDialog"] label,
+        div[data-testid="stDialog"] .stMarkdown p,
+        div[data-testid="stDialog"] .stMarkdown strong {
+            color: #334155 !important;
+        }
+        
+        /* Label-ul de deasupra selectbox-ului si textarea-ului */
+        div[data-testid="stDialog"] [data-testid="stWidgetLabel"] p,
+        div[data-testid="stDialog"] [data-testid="stWidgetLabel"] label {
+            color: #334155 !important;
+            font-weight: 800 !important;
+            font-size: 0.98rem !important;
+            opacity: 1 !important;
+        }
+        
+        /* Alerturile Streamlit din modale */
         div[data-testid="stDialog"] div[data-testid="stAlert"] {
             border-radius: 14px !important;
-            border: 1px solid rgba(245, 158, 11, 0.45) !important;
-            background: #fef3c7 !important;
-            color: #78350f !important;
+            border: 1px solid rgba(148, 163, 184, 0.40) !important;
+            background: rgba(248, 250, 252, 0.72) !important;
+            color: #334155 !important;
         }
         
         div[data-testid="stDialog"] div[data-testid="stAlert"] * {
-            color: #78350f !important;
-            -webkit-text-fill-color: #78350f !important;
+            color: #334155 !important;
+            -webkit-text-fill-color: #334155 !important;
             opacity: 1 !important;
         }
         
         div[data-testid="stDialog"] div[data-testid="stAlert"] p {
-            color: #78350f !important;
+            color: #334155 !important;
             font-weight: 650 !important;
             line-height: 1.55 !important;
         }
         
-        div[data-testid="stDialog"] textarea {
-            background: #f8fafc !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 12px !important;
-            color: #101828 !important;
-            font-size: 0.92rem !important;
+               /* Textarea din modală - fără margini negre */
+        div[data-testid="stDialog"] .stTextArea {
+            background: transparent !important;
         }
         
-        div[data-testid="stDialog"] textarea::placeholder {
+        div[data-testid="stDialog"] .stTextArea > div {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        div[data-testid="stDialog"] .stTextArea > div > div {
+            background: #f8fafc !important;
+            border: 1px solid rgba(148, 163, 184, 0.45) !important;
+            border-radius: 16px !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+        }
+        
+        div[data-testid="stDialog"] .stTextArea textarea {
+            background: #f8fafc !important;
+            color: #0f172a !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            border-radius: 16px !important;
+            padding: 14px 16px !important;
+            line-height: 1.55 !important;
+            font-size: 0.95rem !important;
+            resize: vertical !important;
+        }
+        
+        div[data-testid="stDialog"] .stTextArea textarea::placeholder {
             color: #64748b !important;
+            opacity: 1 !important;
+        }
+        
+        div[data-testid="stDialog"] .stTextArea > div > div:focus-within {
+            border-color: rgba(37, 99, 235, 0.45) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+        }
+        
+        /* Selectbox din modală */
+        div[data-testid="stDialog"] div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+            min-height: 50px !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(96, 165, 250, 0.30) !important;
+            background: #10233c !important;
+            box-shadow: none !important;
+        }
+        
+        div[data-testid="stDialog"] div[data-testid="stSelectbox"] [data-baseweb="select"] div {
+            background: #10233c !important;
+        }
+        
+        div[data-testid="stDialog"] div[data-testid="stSelectbox"] [data-baseweb="select"] *,
+        div[data-testid="stDialog"] div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        div[data-testid="stDialog"] div[data-testid="stSelectbox"] [data-baseweb="select"] input {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+            font-weight: 750 !important;
         }
         
         div[data-testid="stDialog"] button {
@@ -2512,6 +2775,96 @@ def load_analyst_styles():
             margin: 0.1rem 0 0.8rem 0;
             font-size: 0.86rem;
             line-height: 1.5;
+        }
+        
+        /* =========================
+           ANALYST REPORTS PAGE
+        ========================= */
+        .analyst-report-card-anchor {
+            display: none;
+        }
+        
+        div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor) {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 22px;
+            padding: 22px 24px 18px 24px;
+            margin-top: 1.25rem;
+            margin-bottom: 18px;
+            box-shadow:
+                0 14px 36px rgba(0, 0, 0, 0.25),
+                0 0 34px rgba(37, 99, 235, 0.08);
+            overflow: visible;
+        }
+        
+        .analyst-report-header {
+            display: grid;
+            grid-template-columns: 2.05fr 2.05fr 1.25fr 0.95fr 1.1fr;
+            gap: 18px;
+            align-items: center;
+            padding: 15px 2px 10px 2px;
+            margin-top: 18px;
+            border-top: 1px solid rgba(148, 163, 184, 0.16);
+            border-bottom: none !important;
+            color: #93a7c5;
+            font-size: 0.76rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        
+        .status-badge-progress {
+            background: rgba(59, 130, 246, 0.16);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+        
+        .analyst-report-client-request-box {
+            background:
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.10), transparent 34%),
+                linear-gradient(180deg, rgba(15, 35, 60, 0.92) 0%, rgba(11, 23, 40, 0.96) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            border-radius: 18px;
+            padding: 16px 18px;
+            margin: 16px 0 18px 0;
+        }
+        
+        .analyst-report-client-request-title {
+            color: #f8fafc;
+            font-size: 0.95rem;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+        
+        .analyst-report-client-request-text {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            line-height: 1.55;
+        }
+        
+        /* Butonul Gestionează din tabelul de rapoarte */
+        div[data-testid="stVerticalBlock"] > div:has(.analyst-report-action-button-anchor) + div div[data-testid="stButton"] button {
+            min-height: 42px !important;
+            border-radius: 999px !important;
+            background: rgba(37, 99, 235, 0.18) !important;
+            color: #bfdbfe !important;
+            border: 1px solid rgba(96, 165, 250, 0.34) !important;
+            font-size: 0.78rem !important;
+            font-weight: 900 !important;
+            box-shadow: none !important;
+            padding: 8px 14px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:has(.analyst-report-action-button-anchor) + div div[data-testid="stButton"] button:hover {
+            background: rgba(37, 99, 235, 0.30) !important;
+            color: #ffffff !important;
+            border-color: rgba(147, 197, 253, 0.55) !important;
+            transform: translateY(-1px);
         }
 
         /* =========================
