@@ -1,4 +1,5 @@
 import streamlit as st
+
 from session import init_session, logout
 from views.auth import render_auth_page
 from views.client import (
@@ -14,16 +15,19 @@ from views.analyst import (
 )
 from views.styles import load_global_styles
 
+
 st.set_page_config(
     page_title="Financial Insight Pro",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 init_session()
 load_global_styles()
 
-if st.session_state.authenticated:
+
+def render_sidebar():
     with st.sidebar:
         st.markdown("## Financial Insight Pro")
         st.caption(f"Logged in as {st.session_state.username}")
@@ -38,27 +42,35 @@ if st.session_state.authenticated:
                     if st.session_state.is_onboarded
                     else "client_onboarding"
                 )
+                st.rerun()
 
             if st.button("Predicție ML / Risc", use_container_width=True):
                 st.session_state.page = "client_risk"
+                st.rerun()
 
             if st.button("Importuri", use_container_width=True):
                 st.session_state.page = "client_imports"
+                st.rerun()
 
-            if st.button("Onboarding / Upload", use_container_width=True):
-                st.session_state.page = "client_onboarding"
+            if not st.session_state.is_onboarded:
+                if st.button("Onboarding / Upload", use_container_width=True):
+                    st.session_state.page = "client_onboarding"
+                    st.rerun()
 
         elif st.session_state.role == "analyst":
             st.write("---")
 
             if st.button("Portofoliu firme", use_container_width=True):
                 st.session_state.page = "analyst_portfolio"
+                st.rerun()
 
             if st.button("Importuri", use_container_width=True):
                 st.session_state.page = "analyst_imports"
+                st.rerun()
 
             if st.button("Rapoarte", use_container_width=True):
                 st.session_state.page = "analyst_reports"
+                st.rerun()
 
         st.write("---")
 
@@ -66,9 +78,13 @@ if st.session_state.authenticated:
             logout()
             st.rerun()
 
+
 if not st.session_state.authenticated:
     render_auth_page()
+
 else:
+    render_sidebar()
+
     if st.session_state.role == "client":
         if st.session_state.page == "client_onboarding":
             render_client_onboarding()
@@ -86,3 +102,8 @@ else:
             render_analyst_reports_page()
         else:
             render_analyst_portfolio_page()
+
+    else:
+        st.error("Rol necunoscut. Te rog autentifică-te din nou.")
+        logout()
+        st.rerun()

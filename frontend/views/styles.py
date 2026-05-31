@@ -39,14 +39,63 @@ def load_global_styles():
         /* =========================
            SIDEBAR
         ========================= */
-        [data-testid="stSidebar"] {
-            background: #0f172a;
+        section[data-testid="stSidebar"] {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            min-width: 310px !important;
+            width: 310px !important;
+            max-width: 310px !important;
+            background: #0f172a !important;
+            transform: translateX(0px) !important;
+            z-index: 999999 !important;
         }
-
-        [data-testid="stSidebar"] * {
-            color: white;
+        
+        section[data-testid="stSidebar"] > div {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: #0f172a !important;
         }
-
+        
+        section[data-testid="stSidebar"] * {
+            color: white !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Ascunde butonul nativ Streamlit de închidere/sidebar collapse */
+        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+        }
+        
+        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        
+        /* fallback pentru variante diferite de Streamlit */
+        button[aria-label="Close sidebar"],
+        button[aria-label="Open sidebar"],
+        button[title="Close sidebar"],
+        button[title="Open sidebar"],
+        [data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="collapsedControl"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
         /* =========================
            AUTH
         ========================= */
@@ -310,24 +359,26 @@ def load_global_styles():
 
         div[data-testid="stFormSubmitButton"] button,
         .stButton > button {
-            height: 44px;
-            border-radius: 7px;
+            height: 46px;
+            border-radius: 10px;
             background: #2563eb;
             color: white;
-            border: none;
+            border: 1px solid rgba(96, 165, 250, 0.28);
             font-weight: 800;
-            font-size: 0.92rem;
-            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+            font-size: 0.94rem;
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
             transition: 0.18s ease;
         }
 
         div[data-testid="stFormSubmitButton"] button:hover,
-        .stButton > button:hover {
-            background: #1d4ed8;
-            color: white;
-            transform: translateY(-1px);
-        }
-
+            .stButton > button:hover {
+                background: #1d4ed8;
+                color: white;
+                border-color: rgba(147, 197, 253, 0.45);
+                transform: translateY(-1px);
+                box-shadow: 0 16px 30px rgba(37, 99, 235, 0.30);
+            }
+            
         .stAlert {
             border-radius: 10px;
             font-size: 0.9rem;
@@ -1456,8 +1507,8 @@ def load_global_styles():
             font-weight: 800 !important;
         }
         
-                /* =========================
-           CLIENT IMPORTS DARK TABLE
+        /* =========================
+        CLIENT IMPORTS DARK TABLE
         ========================= */
         .compact-header {
             margin-bottom: 0.8rem;
@@ -1467,19 +1518,28 @@ def load_global_styles():
             height: 44px;
         }
 
-        .client-import-table-card {
+        .client-import-card-anchor {
+            display: none;
+        }
+
+        div[data-testid="stVerticalBlock"]:has(.client-import-card-anchor) {
             background:
                 radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
                 linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
             border: 1px solid rgba(96, 165, 250, 0.22);
             border-radius: 22px;
             padding: 22px 24px 18px 24px;
-            margin-top: 1.3rem;
-            margin-bottom: 10px;
+            margin-top: 1.25rem;
+            margin-bottom: 18px;
             box-shadow:
                 0 14px 36px rgba(0, 0, 0, 0.25),
                 0 0 34px rgba(37, 99, 235, 0.08);
-            overflow: hidden;
+            overflow: visible;
+        }
+
+        .client-import-table-top {
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         .client-import-table-title {
@@ -1494,7 +1554,7 @@ def load_global_styles():
             color: #8fa3c4;
             font-size: 0.92rem;
             line-height: 1.45;
-            margin-bottom: 18px;
+            margin-bottom: 0;
         }
 
         .client-import-header {
@@ -1502,9 +1562,10 @@ def load_global_styles():
             grid-template-columns: 2.05fr 1.25fr 0.95fr 2.1fr 0.95fr;
             gap: 18px;
             align-items: center;
-            padding: 12px 2px 14px 2px;
+            padding: 15px 2px 10px 2px;
+            margin-top: 18px;
             border-top: 1px solid rgba(148, 163, 184, 0.16);
-            border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+            border-bottom: none !important;
             color: #93a7c5;
             font-size: 0.76rem;
             font-weight: 900;
@@ -1517,7 +1578,7 @@ def load_global_styles():
         .client-import-row-divider {
             height: 1px;
             background: rgba(148, 163, 184, 0.15);
-            margin: 14px 0;
+            margin: 18px 0;
         }
 
         .client-import-main {
@@ -1586,18 +1647,17 @@ def load_global_styles():
             line-height: 1.45;
         }
 
-        .client-import-empty-card {
+        .client-import-empty-row {
             background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
-                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
-            border: 1px solid rgba(96, 165, 250, 0.22);
-            border-radius: 22px;
-            padding: 24px;
-            margin-top: 1.3rem;
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 34%),
+                linear-gradient(180deg, rgba(16, 35, 60, 0.55) 0%, rgba(11, 27, 49, 0.65) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            border-radius: 18px;
+            padding: 22px 24px;
+            margin-top: 0.6rem;
             color: #cbd5e1;
-            box-shadow:
-                0 14px 36px rgba(0, 0, 0, 0.25),
-                0 0 34px rgba(37, 99, 235, 0.08);
+            font-size: 0.95rem;
+            font-weight: 650;
         }
 
         .client-detail-card {
@@ -1636,37 +1696,6 @@ def load_global_styles():
             font-size: 0.88rem;
         }
 
-        div[data-testid="stExpander"] {
-            border: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stExpander"] details {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stExpander"] summary {
-            background: rgba(15, 23, 42, 0.78) !important;
-            border: 1px solid rgba(96, 165, 250, 0.24) !important;
-            border-radius: 14px !important;
-            color: #f8fafc !important;
-            font-weight: 800 !important;
-            min-height: 38px !important;
-            padding: 0.35rem 0.8rem !important;
-        }
-
-        div[data-testid="stExpander"] summary:hover {
-            background: rgba(30, 41, 59, 0.92) !important;
-            border-color: rgba(147, 197, 253, 0.45) !important;
-        }
-
-        div[data-testid="stExpander"] [data-testid="stMarkdownContainer"] {
-            color: #cbd5e1 !important;
-        }
-
         div[data-testid="stDownloadButton"] button {
             min-height: 42px !important;
             border-radius: 999px !important;
@@ -1693,83 +1722,367 @@ def load_global_styles():
             font-weight: 700;
         }
 
+        div[data-testid="stSelectbox"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: visible !important;
+        }
+
+        div[data-testid="stSelectbox"] > div {
+            background: transparent !important;
+            border-radius: 16px !important;
+        }
+
+        div[data-testid="stSelectbox"] label p {
+            color: #a7bad8 !important;
+            font-weight: 850 !important;
+            margin-bottom: 0.35rem !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+            min-height: 48px !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(96, 165, 250, 0.32) !important;
+            background: #10233c !important;
+            box-shadow:
+                0 12px 26px rgba(15, 23, 42, 0.24),
+                0 0 22px rgba(37, 99, 235, 0.08) !important;
+            overflow: hidden !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] div {
+            background: #10233c !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] *,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] span,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] input,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] div[role="combobox"] {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            font-weight: 750 !important;
+        }
+
+        div[data-testid="stSelectbox"] [data-baseweb="select"] svg,
+        div[data-testid="stSelectbox"] [data-baseweb="select"] svg path {
+            color: #8fa3c4 !important;
+            fill: #8fa3c4 !important;
+            stroke: #8fa3c4 !important;
+        }
+
+               div[data-baseweb="popover"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45) !important;
+        }
+        
+        div[data-baseweb="popover"] > div,
+        div[data-baseweb="popover"] > div > div {
+            background: #10233c !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+        }
+        
+        div[data-baseweb="popover"] ul {
+            background: #10233c !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(96, 165, 250, 0.30) !important;
+            padding: 6px !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            box-shadow: none !important;
+        }
+        
+        div[data-baseweb="popover"] li,
+        div[data-baseweb="popover"] li *,
+        div[data-baseweb="popover"] [role="option"],
+        div[data-baseweb="popover"] [role="option"] * {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+            background: #10233c !important;
+            opacity: 1 !important;
+            font-weight: 650 !important;
+        }
+        
+        div[data-baseweb="popover"] li,
+        div[data-baseweb="popover"] [role="option"] {
+            border-radius: 10px !important;
+            margin: 2px 0 !important;
+        }
+        
+        div[data-baseweb="popover"] li:hover,
+        div[data-baseweb="popover"] li[aria-selected="true"],
+        div[data-baseweb="popover"] [role="option"]:hover,
+        div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
+            background: #1e3a5f !important;
+            color: #ffffff !important;
+        }
+        
+                /* Butonul "Vezi detalii" din tabelul clientului */
+        div[data-testid="stVerticalBlock"] > div:has(.client-details-button-anchor) + div div[data-testid="stButton"] button {
+            min-height: 38px !important;
+            border-radius: 14px !important;
+            background: rgba(15, 23, 42, 0.78) !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(96, 165, 250, 0.28) !important;
+            font-size: 0.82rem !important;
+            font-weight: 850 !important;
+            box-shadow: none !important;
+            padding: 8px 14px !important;
+            margin-top: 4px !important;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:has(.client-details-button-anchor) + div div[data-testid="stButton"] button:hover {
+            background: rgba(30, 41, 59, 0.95) !important;
+            border-color: rgba(147, 197, 253, 0.48) !important;
+            color: #ffffff !important;
+            transform: translateY(-1px);
+        }
+        
         /* =========================
            SOFTER MODAL LOOK
         ========================= */
         dialog::backdrop {
-            background: rgba(2, 6, 23, 0.68) !important;
+            background: rgba(2, 6, 23, 0.72) !important;
             backdrop-filter: blur(8px) !important;
         }
-
+        
         div[data-testid="stDialog"] div[role="dialog"] {
             border-radius: 22px !important;
-            border: 1px solid rgba(148, 163, 184, 0.28) !important;
+            border: 1px solid rgba(96, 165, 250, 0.24) !important;
             box-shadow:
-                0 30px 90px rgba(2, 6, 23, 0.55),
+                0 30px 90px rgba(2, 6, 23, 0.62),
                 0 0 55px rgba(37, 99, 235, 0.16) !important;
-            background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%) !important;
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
+                linear-gradient(180deg, #e8eef8 0%, #dbe6f5 100%) !important;
             padding: 0 !important;
         }
-
-        div[data-testid="stDialog"] h2 {
-            color: #0f172a !important;
-            opacity: 0.04 !important;
+        
+        /* Ascunde titlul nativ al st.dialog, dar păstrează conținutul nostru custom */
+        div[data-testid="stDialog"] h2,
+        div[role="dialog"] h2,
+        div[data-testid="stDialog"] [data-testid="stDialogTitle"],
+        div[role="dialog"] [data-testid="stDialogTitle"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
         }
-
+        
         .review-modal-header {
             display: flex;
             align-items: center;
             gap: 14px;
             padding: 24px 28px 18px 28px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.22);
         }
-
+        
         .review-modal-icon {
             width: 52px;
             height: 52px;
             border-radius: 16px;
-            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
             color: #2563eb !important;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
             font-weight: 900;
-            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.14);
+            box-shadow: 0 12px 28px rgba(37, 99, 235, 0.16);
         }
-
+        
         .review-modal-title {
             color: #0f172a !important;
             font-size: 1.35rem;
             font-weight: 900;
             line-height: 1.2;
         }
-
+        
         .review-modal-subtitle {
-            color: #64748b !important;
+            color: #475569 !important;
             font-size: 0.95rem;
             margin-top: 4px;
         }
-
+        
         .review-warning-box {
-            background: #fff8e6;
-            border: 1px solid #fde68a;
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
             border-radius: 16px;
             padding: 15px 16px;
             margin: 18px 0;
         }
-
+        
         .review-warning-title {
-            color: #92400e !important;
-            font-weight: 850;
+            color: #78350f !important;
+            font-weight: 900;
             margin-bottom: 5px;
         }
-
+        
         .review-warning-text {
-            color: #92400e !important;
+            color: #78350f !important;
             font-size: 0.92rem;
             line-height: 1.5;
+            font-weight: 600;
         }
+        
+        /* Mesajele Streamlit warning/error din modala de upload */
+        div[data-testid="stDialog"] div[data-testid="stAlert"] {
+            border-radius: 14px !important;
+            border: 1px solid rgba(245, 158, 11, 0.45) !important;
+            background: #fef3c7 !important;
+            color: #78350f !important;
+        }
+        
+        div[data-testid="stDialog"] div[data-testid="stAlert"] * {
+            color: #78350f !important;
+            -webkit-text-fill-color: #78350f !important;
+            opacity: 1 !important;
+        }
+        
+        div[data-testid="stDialog"] div[data-testid="stAlert"] p {
+            color: #78350f !important;
+            font-weight: 650 !important;
+            line-height: 1.55 !important;
+        }
+        
+        div[data-testid="stDialog"] textarea {
+            background: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 12px !important;
+            color: #101828 !important;
+            font-size: 0.92rem !important;
+        }
+        
+        div[data-testid="stDialog"] textarea::placeholder {
+            color: #64748b !important;
+        }
+        
+        div[data-testid="stDialog"] button {
+            border-radius: 12px !important;
+            height: 44px !important;
+            font-weight: 800 !important;
+        }
+        
+        /* =========================
+           CLIENT REJECTION DETAILS MODAL
+        ========================= */
+        dialog::backdrop {
+            background: rgba(2, 6, 23, 0.72) !important;
+            backdrop-filter: blur(8px) !important;
+        }
+        
+        div[data-testid="stDialog"] div[role="dialog"]:has(.client-reject-modal-content) {
+            width: min(980px, 86vw) !important;
+            margin: 7vh auto 0 auto !important;
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #07111f 100%) !important;
+            border: 1px solid rgba(96, 165, 250, 0.28) !important;
+            border-radius: 24px !important;
+            box-shadow:
+                0 30px 90px rgba(2, 6, 23, 0.72),
+                0 0 60px rgba(37, 99, 235, 0.16) !important;
+            padding: 28px 30px 34px 30px !important;
+            color: #f8fafc !important;
+        }
+        
+        div[data-testid="stDialog"] div[role="dialog"]:has(.client-reject-modal-content) h2 {
+            color: #f8fafc !important;
+            opacity: 0.06 !important;
+        }
+        
+        .client-reject-modal-content {
+            padding: 0 0 10px 0;
+        }
+        
+        .client-reject-modal-eyebrow {
+            color: #f87171;
+            font-size: 0.78rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+        
+        .client-reject-modal-title {
+            color: #f8fafc;
+            font-size: 1.55rem;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+            margin-bottom: 10px;
+        }
+        
+        .client-reject-modal-subtitle {
+            color: #9fb7de;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            margin-bottom: 18px;
+        }
+        
+        .client-reject-modal-subtitle strong {
+            color: #e2e8f0;
+            font-weight: 850;
+        }
+        
+        .client-reject-modal-box {
+            background:
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.10), transparent 34%),
+                linear-gradient(180deg, rgba(15, 35, 60, 0.92) 0%, rgba(11, 23, 40, 0.96) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            border-radius: 18px;
+            padding: 20px 22px;
+            color: #cbd5e1;
+            max-height: 430px;
+            overflow-y: auto;
+            margin-bottom: 4px;
+        }
+        
+        .client-reject-modal-box-title {
+            color: #f8fafc;
+            font-size: 1rem;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+        
+        .client-reject-modal-box-text {
+            color: #cbd5e1;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+        
+        .client-reject-modal-list {
+            margin: 0;
+            padding-left: 20px;
+            color: #dbeafe;
+        }
+        
+        .client-reject-modal-list li {
+            margin-bottom: 8px;
+            line-height: 1.45;
+            font-size: 0.92rem;
+        }
+        
+        div[data-testid="stDialog"] div[role="dialog"]:has(.client-reject-modal-content) button {
+            border-radius: 12px !important;
+        }
+
+        
+        
         /* =========================
            RESPONSIVE
         ========================= */
@@ -2004,48 +2317,154 @@ def load_analyst_styles():
         /* =========================
            ANALYST TABLES
         ========================= */
-        .analyst-table-card {
-            padding: 18px 20px 12px 20px;
-            overflow: hidden;
+        .analyst-import-card-anchor {
+            display: none;
         }
-
-        .analyst-import-header,
-        .analyst-import-row {
+        
+        div[data-testid="stVerticalBlock"]:has(.analyst-import-card-anchor) {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 34%),
+                linear-gradient(180deg, #10233c 0%, #0b1b31 100%);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 22px;
+            padding: 22px 24px 18px 24px;
+            margin-top: 1.25rem;
+            margin-bottom: 18px;
+            box-shadow:
+                0 14px 36px rgba(0, 0, 0, 0.25),
+                0 0 34px rgba(37, 99, 235, 0.08);
+            overflow: visible;
+        }
+        
+        .analyst-import-table-top {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .analyst-import-table-title {
+            color: #f8fafc;
+            font-size: 1.25rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 5px;
+        }
+        
+        .analyst-import-table-subtitle {
+            color: #8fa3c4;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            margin-bottom: 0;
+        }
+        
+        .analyst-import-header {
             display: grid;
-            grid-template-columns: 2.1fr 2.5fr 1.45fr 1.15fr 1.25fr;
+            grid-template-columns: 2.05fr 2.05fr 1.35fr 0.95fr 1.1fr;
             gap: 18px;
             align-items: center;
-        }
-
-        .analyst-import-header,
-        .analyst-company-header {
+            padding: 15px 2px 10px 2px;
+            margin-top: 18px;
+            border-top: 1px solid rgba(148, 163, 184, 0.16);
+            border-bottom: none !important;
             color: #93a7c5;
             font-size: 0.76rem;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.06em;
+            background: transparent !important;
+            box-shadow: none !important;
         }
-
-        .analyst-import-header {
-            padding: 12px 8px 14px 8px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.20);
+        
+        .analyst-import-row-divider {
+            height: 1px;
+            background: rgba(148, 163, 184, 0.15);
+            margin: 18px 0;
         }
-
-        .analyst-import-row {
-            padding: 18px 8px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        
+        .analyst-import-main {
+            color: #f8fafc;
+            font-size: 0.94rem;
+            font-weight: 850;
+            line-height: 1.35;
+            word-break: break-word;
         }
-
-        .analyst-import-row:last-child {
-            border-bottom: none;
+        
+        .analyst-import-sub {
+            color: #8fa3c4;
+            font-size: 0.82rem;
+            margin-top: 4px;
+            line-height: 1.35;
+            word-break: break-word;
         }
-
+        
+        .analyst-import-empty-row {
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 34%),
+                linear-gradient(180deg, rgba(16, 35, 60, 0.55) 0%, rgba(11, 27, 49, 0.65) 100%);
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            border-radius: 18px;
+            padding: 22px 24px;
+            margin-top: 0.6rem;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            font-weight: 650;
+        }
+        
+        .analyst-muted-action {
+            color: #8fa3c4;
+            font-size: 0.86rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        /* Butonul Acțiuni din tabelul analistului */
+        div[data-testid="stVerticalBlock"] > div:has(.analyst-action-button-anchor) + div div[data-testid="stButton"] button {
+            min-height: 42px !important;
+            border-radius: 999px !important;
+            background: rgba(37, 99, 235, 0.18) !important;
+            color: #bfdbfe !important;
+            border: 1px solid rgba(96, 165, 250, 0.34) !important;
+            font-size: 0.78rem !important;
+            font-weight: 900 !important;
+            box-shadow: none !important;
+            padding: 8px 14px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:has(.analyst-action-button-anchor) + div div[data-testid="stButton"] button:hover {
+            background: rgba(37, 99, 235, 0.30) !important;
+            color: #ffffff !important;
+            border-color: rgba(147, 197, 253, 0.55) !important;
+            transform: translateY(-1px);
+        }
+        
+                /* Butonul Descarcă din tabelul analistului */
+        div[data-testid="stDownloadButton"] button {
+            min-height: 42px !important;
+            border-radius: 999px !important;
+            background: rgba(37, 99, 235, 0.18) !important;
+            color: #bfdbfe !important;
+            border: 1px solid rgba(96, 165, 250, 0.34) !important;
+            font-size: 0.78rem !important;
+            font-weight: 900 !important;
+            box-shadow: none !important;
+            padding: 8px 14px !important;
+            margin-bottom: 0 !important;
+        }
+        
+        div[data-testid="stDownloadButton"] button:hover {
+            background: rgba(37, 99, 235, 0.30) !important;
+            color: #ffffff !important;
+            border-color: rgba(147, 197, 253, 0.55) !important;
+            transform: translateY(-1px);
+        }
+                
+        /* Tabel firme portofoliu - îl păstrăm cum era */
         .analyst-company-table-card {
             padding: 22px 24px 10px 24px;
             margin-top: 1.4rem;
             overflow: hidden;
         }
-
+        
         .analyst-company-table-title {
             color: #f8fafc;
             font-size: 1.25rem;
@@ -2053,14 +2472,14 @@ def load_analyst_styles():
             letter-spacing: -0.03em;
             margin-bottom: 5px;
         }
-
+        
         .analyst-company-table-subtitle {
             color: #8fa3c4;
             font-size: 0.92rem;
             line-height: 1.45;
             margin-bottom: 18px;
         }
-
+        
         .analyst-company-header,
         .analyst-company-row {
             display: grid;
@@ -2068,22 +2487,22 @@ def load_analyst_styles():
             gap: 18px;
             align-items: center;
         }
-
+        
         .analyst-company-header {
             padding: 12px 2px 14px 2px;
             border-top: 1px solid rgba(148, 163, 184, 0.16);
             border-bottom: 1px solid rgba(148, 163, 184, 0.22);
         }
-
+        
         .analyst-company-row {
             padding: 18px 2px;
             border-bottom: 1px solid rgba(148, 163, 184, 0.15);
         }
-
+        
         .analyst-company-row:last-child {
             border-bottom: none;
         }
-
+        
         .reject-reason-box {
             background: rgba(239, 68, 68, 0.11);
             border: 1px solid rgba(239, 68, 68, 0.25);
@@ -2133,23 +2552,44 @@ def load_analyst_styles():
         /* =========================
            ANALYST SELECTBOX
         ========================= */
+        div[data-testid="stSelectbox"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: visible !important;
+        }
+        
+        div[data-testid="stSelectbox"] > div {
+            background: transparent !important;
+            border-radius: 16px !important;
+        }
+        
         div[data-testid="stSelectbox"] label p {
             color: #a7bad8 !important;
             font-weight: 850 !important;
+            margin-bottom: 0.35rem !important;
         }
-
+        
+        div[data-testid="stSelectbox"] [data-baseweb="select"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+        }
+        
         div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
-            min-height: 46px !important;
-            border-radius: 12px !important;
-            border: 1px solid rgba(96, 165, 250, 0.28) !important;
+            min-height: 48px !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(96, 165, 250, 0.32) !important;
             background: #10233c !important;
-            box-shadow: none !important;
+            box-shadow:
+                0 12px 26px rgba(15, 23, 42, 0.24),
+                0 0 22px rgba(37, 99, 235, 0.08) !important;
+            overflow: hidden !important;
         }
-
+        
         div[data-testid="stSelectbox"] [data-baseweb="select"] div {
             background: #10233c !important;
         }
-
+        
         div[data-testid="stSelectbox"] [data-baseweb="select"] *,
         div[data-testid="stSelectbox"] [data-baseweb="select"] span,
         div[data-testid="stSelectbox"] [data-baseweb="select"] input,
@@ -2158,28 +2598,40 @@ def load_analyst_styles():
             -webkit-text-fill-color: #f8fafc !important;
             opacity: 1 !important;
             visibility: visible !important;
-            font-weight: 700 !important;
+            font-weight: 750 !important;
         }
-
+        
         div[data-testid="stSelectbox"] [data-baseweb="select"] svg,
         div[data-testid="stSelectbox"] [data-baseweb="select"] svg path {
             color: #8fa3c4 !important;
             fill: #8fa3c4 !important;
             stroke: #8fa3c4 !important;
         }
-
-        div[data-baseweb="popover"],
+        
+        div[data-baseweb="popover"] {
+            background: transparent !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45) !important;
+        }
+        
+        div[data-baseweb="popover"] > div,
+        div[data-baseweb="popover"] > div > div {
+            background: #10233c !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+        }
+        
         div[data-baseweb="popover"] ul {
             background: #10233c !important;
-        }
-
-        div[data-baseweb="popover"] ul {
-            border-radius: 12px !important;
-            border: 1px solid rgba(96, 165, 250, 0.28) !important;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45) !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(96, 165, 250, 0.30) !important;
             padding: 6px !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            box-shadow: none !important;
         }
-
+        
         div[data-baseweb="popover"] li,
         div[data-baseweb="popover"] li *,
         div[data-baseweb="popover"] [role="option"],
@@ -2188,9 +2640,15 @@ def load_analyst_styles():
             -webkit-text-fill-color: #f8fafc !important;
             background: #10233c !important;
             opacity: 1 !important;
-            font-weight: 600 !important;
+            font-weight: 650 !important;
         }
-
+        
+        div[data-baseweb="popover"] li,
+        div[data-baseweb="popover"] [role="option"] {
+            border-radius: 10px !important;
+            margin: 2px 0 !important;
+        }
+        
         div[data-baseweb="popover"] li:hover,
         div[data-baseweb="popover"] li[aria-selected="true"],
         div[data-baseweb="popover"] [role="option"]:hover,

@@ -521,7 +521,7 @@ def _rejection_summary(reason):
     }
 
 
-@st.dialog("Adaugă import nou", width="large")
+@st.dialog("Adauga import nou", width="large")
 def render_add_import_modal():
     st.markdown(
         """
@@ -597,6 +597,66 @@ def render_add_import_modal():
         else:
             st.error(result.get("message", "Încărcarea importului a eșuat."))
 
+@st.dialog("Detalii respingere import", width="large")
+def render_client_rejection_details_modal(upload: dict):
+    summary = _rejection_summary(upload.get("motiv_respingere"))
+    file_name = escape(str(upload.get("nume_fisier") or "Fișier necunoscut"))
+    upload_date = escape(str(upload.get("data_incarcare") or "—"))
+
+    st.markdown(
+        f"""
+        <div class="client-reject-modal-content">
+            <div class="client-reject-modal-eyebrow">Import respins</div>
+            <div class="client-reject-modal-title">{escape(summary["title"])}</div>
+            <div class="client-reject-modal-subtitle">
+                Fișier: <strong>{file_name}</strong><br>
+                Data încărcării: <strong>{upload_date}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if summary["type"] == "columns":
+        items_html = "".join(
+            f"<li>{escape(item)}</li>"
+            for item in summary["details"]
+        )
+
+        st.markdown(
+            f"""
+            <div class="client-reject-modal-box">
+                <div class="client-reject-modal-box-title">
+                    Coloane lipsă în fișier
+                </div>
+                <div class="client-reject-modal-box-text">
+                    Fișierul nu conține toate coloanele financiare obligatorii.
+                    Revizuiește structura fișierului Excel și reîncarcă un import valid.
+                </div>
+                <ul class="client-reject-modal-list">
+                    {items_html}
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        detail_text = summary["details"][0] if summary["details"] else "Importul a fost respins de analist."
+
+        st.markdown(
+            f"""
+            <div class="client-reject-modal-box">
+                <div class="client-reject-modal-box-title">
+                    Motiv respingere
+                </div>
+                <div class="client-reject-modal-box-text">
+                    {escape(detail_text)}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
 def render_client_import_row(upload: dict):
     status = upload.get("status")
@@ -636,9 +696,6 @@ def render_client_import_row(upload: dict):
                 """
                 <div class="client-import-observation">
                     <div class="client-import-observation-title approved">Date procesate</div>
-                    <div class="client-import-observation-text">
-                        Inclus în calculele KPI și în dashboard.
-                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -649,9 +706,6 @@ def render_client_import_row(upload: dict):
                 """
                 <div class="client-import-observation">
                     <div class="client-import-observation-title pending">În verificare</div>
-                    <div class="client-import-observation-text">
-                        Trimis către analist pentru validarea finală.
-                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -663,46 +717,25 @@ def render_client_import_row(upload: dict):
             st.markdown(
                 f"""
                 <div class="client-import-observation">
-                    <div class="client-import-observation-title rejected">{escape(summary["title"])}</div>
-                    <div class="client-import-observation-text">
-                        {escape(summary["short"])}
+                    <div class="client-import-observation-title rejected">
+                        {escape(summary["title"])}
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            if summary["details"]:
-                with st.expander("Vezi detalii", expanded=False):
-                    if summary["type"] == "columns":
-                        items_html = "".join(
-                            f"<li>{escape(item)}</li>"
-                            for item in summary["details"]
-                        )
+            st.markdown(
+                '<div class="client-details-button-anchor"></div>',
+                unsafe_allow_html=True,
+            )
 
-                        st.markdown(
-                            f"""
-                            <div class="client-detail-card">
-                                <div class="client-detail-card-title">Coloane lipsă</div>
-                                <ul class="client-detail-list">
-                                    {items_html}
-                                </ul>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        st.markdown(
-                            f"""
-                            <div class="client-detail-card">
-                                <div class="client-detail-card-title">Motiv respingere</div>
-                                <div class="client-detail-text">
-                                    {escape(summary["details"][0])}
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+            if st.button(
+                    "Vezi detalii",
+                    key=f"client_rejection_details_{upload.get('id')}",
+                    use_container_width=True,
+            ):
+                render_client_rejection_details_modal(upload)
 
     with col_action:
         upload_id = upload.get("id")
@@ -740,14 +773,56 @@ def render_client_import_row(upload: dict):
 
 
 def render_client_imports_table(uploads: list):
-    st.html(
-        """
-        <div class="client-import-table-card">
-            <div class="client-import-table-title">Istoric importuri</div>
-            <div class="client-import-table-subtitle">
-                Importurile aprobate sunt incluse în calculele KPI și în dashboard.
+    if not uploads:
+        st.markdown(
+            """
+            <div class="client-import-empty-row">
+                Nu există importuri pentru filtrul selectat.
             </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
 
+    for upload in uploads:
+        render_client_import_row(upload)
+
+def render_client_imports_header(status_options: list):
+    with st.container():
+        st.markdown(
+            '<div class="client-import-card-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        top_left, top_right = st.columns([2.6, 1], vertical_alignment="bottom")
+
+        with top_left:
+            st.markdown(
+                """
+                <div class="client-import-table-top">
+                    <div class="client-import-table-title">Istoric importuri</div>
+                    <div class="client-import-table-subtitle">
+                        Importurile aprobate sunt incluse în calculele KPI și în dashboard.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with top_right:
+            selected_status_label = st.selectbox(
+                "Filtrează după status",
+                options=status_options,
+                index=(
+                    status_options.index(st.session_state.client_upload_status_filter)
+                    if st.session_state.client_upload_status_filter in status_options
+                    else 0
+                ),
+                key="client_upload_status_filter",
+            )
+
+        st.markdown(
+            """
             <div class="client-import-header">
                 <div>Fișier</div>
                 <div>Data încărcării</div>
@@ -755,13 +830,11 @@ def render_client_imports_table(uploads: list):
                 <div>Observații</div>
                 <div>Acțiuni</div>
             </div>
-        </div>
-        """
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
-    for upload in uploads:
-        render_client_import_row(upload)
-
+    return selected_status_label
 
 def render_client_imports_page():
     _render_client_imports_styles_override()
@@ -784,7 +857,10 @@ def render_client_imports_page():
         )
 
     with header_right:
-        st.markdown('<div class="client-import-action-space"></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="client-import-action-space"></div>',
+            unsafe_allow_html=True,
+        )
 
         if st.button("Adaugă import nou", use_container_width=True):
             render_add_import_modal()
@@ -818,41 +894,14 @@ def render_client_imports_page():
     if "client_upload_status_filter" not in st.session_state:
         st.session_state.client_upload_status_filter = "Toate"
 
-    toolbar_left, toolbar_right = st.columns([1.05, 3], vertical_alignment="bottom")
-
-    with toolbar_left:
-        selected_status_label = st.selectbox(
-            "Filtrează după status",
-            options=status_options,
-            index=(
-                status_options.index(st.session_state.client_upload_status_filter)
-                if st.session_state.client_upload_status_filter in status_options
-                else 0
-            ),
-            key="client_upload_status_filter",
-        )
-
-    with toolbar_right:
-        st.markdown("<div class='divider-space'></div>", unsafe_allow_html=True)
-
-    selected_status = status_map[selected_status_label]
+    selected_status_label = render_client_imports_header(status_options)
+    selected_status = status_map.get(selected_status_label, "all")
 
     if selected_status != "all":
         uploads = [
             upload for upload in uploads
             if upload.get("status") == selected_status
         ]
-
-    if not uploads:
-        st.markdown(
-            """
-            <div class="client-import-empty-card">
-                Nu există importuri pentru filtrul selectat.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        return
 
     render_client_imports_table(uploads)
 

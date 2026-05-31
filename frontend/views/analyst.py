@@ -354,81 +354,165 @@ def render_review_import_modal(upload: dict):
 
 
 def render_upload_actions(upload: dict):
+    upload_id = upload.get("id")
     status = upload.get("status")
 
-    if status != "pending":
-        status_text = _status_label(status).lower()
+    if status == "pending":
         st.markdown(
-            f"""
+            '<div class="analyst-action-button-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        if st.button(
+            "Acțiuni",
+            key=f"actions_{upload_id}",
+            use_container_width=True,
+        ):
+            st.session_state.selected_review_upload = upload
+            st.rerun()
+
+        return
+
+    if not upload_id:
+        st.markdown(
+            """
             <div class="analyst-muted-action">
-                Import {status_text}
+                Fișier indisponibil
             </div>
             """,
             unsafe_allow_html=True,
         )
         return
 
-    if st.button(
-        "Acțiuni",
-        key=f"actions_{upload.get('id')}",
-        use_container_width=True,
-    ):
-        st.session_state.selected_review_upload = upload
-        st.rerun()
-
-
-def render_upload_row(upload: dict):
-    status = upload.get("status")
-
-    st.markdown(
-        f"""
-        <div class="analyst-import-row">
-            <div>
-                <div class="analyst-main-text">{upload.get("company_name")}</div>
-                <div class="analyst-sub-text">
-                    CUI: {upload.get("cui")} · Client: {upload.get("client_username")}
-                </div>
-            </div>
-            <div>
-                <div class="analyst-main-text">{upload.get("file_name")}</div>
-                <div class="analyst-sub-text">
-                    Domeniu: {upload.get("industry") or "N/A"}
-                </div>
-            </div>
-            <div>
-                <div class="analyst-main-text">{upload.get("uploaded_at")}</div>
-                <div class="analyst-sub-text">
-                    Procesat: {upload.get("processed_at") or "—"}
-                </div>
-            </div>
-            <div>
-                {_status_badge(status)}
-            </div>
-            <div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    download_result = download_upload_file(
+        upload_id=upload_id,
+        access_token=st.session_state.access_token,
     )
 
-    action_cols = st.columns([2.1, 2.5, 1.45, 1.15, 1.25])
-    with action_cols[-1]:
-        render_upload_actions(upload)
-
-    if status == "rejected" and upload.get("rejection_reason"):
+    if download_result.get("success"):
+        st.download_button(
+            label="Descarcă",
+            data=download_result.get("content"),
+            file_name=upload.get("file_name") or f"import_{upload_id}.xlsx",
+            mime=download_result.get(
+                "content_type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            use_container_width=True,
+            key=f"analyst_download_upload_{upload_id}",
+        )
+    else:
         st.markdown(
-            f"""
-            <div class="reject-reason-box">
-                <strong>Motiv respingere:</strong> {upload.get("rejection_reason")}
+            """
+            <div class="analyst-muted-action">
+                Fișier indisponibil
             </div>
             """,
             unsafe_allow_html=True,
         )
 
 
-def render_uploads_table(uploads: list):
+def render_upload_row(upload: dict):
+    status = upload.get("status")
+
+    company_name = escape(str(upload.get("company_name") or "—"))
+    cui = escape(str(upload.get("cui") or "—"))
+    client_username = escape(str(upload.get("client_username") or "—"))
+    file_name = escape(str(upload.get("file_name") or "Fișier necunoscut"))
+    industry = escape(str(upload.get("industry") or "N/A"))
+    uploaded_at = escape(str(upload.get("uploaded_at") or "—"))
+    processed_at = escape(str(upload.get("processed_at") or "—"))
+
+    col_company, col_file, col_date, col_status, col_actions = st.columns(
+        [2.05, 2.05, 1.35, 0.95, 1.1],
+        vertical_alignment="center",
+    )
+
+    with col_company:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{company_name}</div>
+            <div class="analyst-import-sub">
+                CUI: {cui} · Client: {client_username}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_file:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{file_name}</div>
+            <div class="analyst-import-sub">
+                Domeniu: {industry}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_date:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{uploaded_at}</div>
+            <div class="analyst-import-sub">
+                Procesat: {processed_at}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_status:
+        st.markdown(
+            _status_badge(status),
+            unsafe_allow_html=True,
+        )
+
+    with col_actions:
+        render_upload_actions(upload)
+
     st.markdown(
-        """
-        <div class="analyst-table-card">
+        '<div class="analyst-import-row-divider"></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_analyst_imports_header(status_options: list):
+    with st.container():
+        st.markdown(
+            '<div class="analyst-import-card-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        top_left, top_right = st.columns([2.6, 1], vertical_alignment="bottom")
+
+        with top_left:
+            st.markdown(
+                """
+                <div class="analyst-import-table-top">
+                    <div class="analyst-import-table-title">Lista importurilor</div>
+                    <div class="analyst-import-table-subtitle">
+                        Importurile în așteptare necesită verificare finală din partea analistului.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with top_right:
+            selected_status_label = st.selectbox(
+                "Filtrează după status",
+                options=status_options,
+                index=(
+                    status_options.index(st.session_state.analyst_upload_status_filter)
+                    if st.session_state.analyst_upload_status_filter in status_options
+                    else 0
+                ),
+                key="analyst_upload_status_filter",
+                on_change=_clear_review_modal_on_filter_change,
+            )
+
+        st.markdown(
+            """
             <div class="analyst-import-header">
                 <div>Companie</div>
                 <div>Fișier</div>
@@ -436,14 +520,26 @@ def render_uploads_table(uploads: list):
                 <div>Status</div>
                 <div>Acțiuni</div>
             </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
+
+    return selected_status_label
+
+def render_uploads_table(uploads: list):
+    if not uploads:
+        st.markdown(
+            """
+            <div class="analyst-import-empty-row">
+                Nu există importuri pentru filtrul selectat.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
 
     for upload in uploads:
         render_upload_row(upload)
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_analyst_imports_page():
@@ -452,20 +548,6 @@ def render_analyst_imports_page():
     _render_analyst_header(
         "Importuri financiare",
         "Verifică fișierele încărcate de clienți, descarcă documentele Excel și aprobă sau respinge importurile."
-    )
-
-    st.markdown(
-        """
-        <div class="analyst-hero">
-            <div class="analyst-hero-eyebrow">Validare date financiare</div>
-            <div class="analyst-hero-title">Importuri în lucru</div>
-            <div class="analyst-hero-text">
-                Sistemul acceptă doar fișiere care trec validarea automată. Analistul realizează verificarea finală,
-                iar după aprobare sunt calculate KPI-urile, predicția ML și explicațiile SHAP.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
     )
 
     _show_flash_message()
@@ -482,32 +564,7 @@ def render_analyst_imports_page():
     if "analyst_upload_status_filter" not in st.session_state:
         st.session_state.analyst_upload_status_filter = "În așteptare"
 
-    toolbar_left, toolbar_right = st.columns([2.4, 1], vertical_alignment="bottom")
-
-    with toolbar_left:
-        st.markdown(
-            """
-            <div class="analyst-section-title-dark">Lista importurilor</div>
-            <div class="analyst-section-subtitle-dark">
-                Rândurile sunt ordonate după status și data încărcării. Importurile în așteptare necesită acțiune.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with toolbar_right:
-        selected_status_label = st.selectbox(
-            "Filtrează după status",
-            options=status_options,
-            index=(
-                status_options.index(st.session_state.analyst_upload_status_filter)
-                if st.session_state.analyst_upload_status_filter in status_options
-                else 0
-            ),
-            key="analyst_upload_status_filter",
-            on_change=_clear_review_modal_on_filter_change,
-        )
-
+    selected_status_label = render_analyst_imports_header(status_options)
     selected_status = status_map[selected_status_label]
 
     result = get_analyst_uploads(
@@ -520,17 +577,6 @@ def render_analyst_imports_page():
         return
 
     uploads = result.get("data", [])
-
-    if not uploads:
-        st.markdown(
-            """
-            <div class="analyst-empty-card">
-                Nu există importuri pentru filtrul selectat.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        return
 
     render_uploads_table(uploads)
 
