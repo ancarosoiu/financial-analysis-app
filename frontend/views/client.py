@@ -1219,6 +1219,35 @@ def _apply_dark_chart_layout(fig, height=360):
 
     return fig
 
+def _add_risk_thresholds(fig):
+    fig.add_hline(
+        y=30,
+        line_dash="dash",
+        line_width=1,
+        line_color="rgba(249, 115, 22, 0.65)",
+        annotation_text="Prag risc mediu 30%",
+        annotation_position="top left",
+        annotation_font_size=11,
+        annotation_font_color="#fbbf24",
+    )
+
+    fig.add_hline(
+        y=60,
+        line_dash="dash",
+        line_width=1,
+        line_color="rgba(239, 68, 68, 0.65)",
+        annotation_text="Prag risc ridicat 60%",
+        annotation_position="top left",
+        annotation_font_size=11,
+        annotation_font_color="#f87171",
+    )
+
+    fig.update_yaxes(
+        range=[0, 70],
+        ticksuffix="%",
+    )
+
+    return fig
 
 def _render_client_dashboard_styles_override():
     st.markdown(
@@ -1341,16 +1370,15 @@ def render_client_risk_page():
 
     st.html(
         f"""
-<div class="client-dash-header">
-    <div>
-        <div class="client-dash-title">Predicție risc ML</div>
-        <div class="client-dash-subtitle">
-            {company_name} • Analiză predictivă bazată pe indicatorii financiari calculați
+        <div class="client-dash-header">
+            <div>
+                <div class="client-dash-title">Predicție risc ML</div>
+                <div class="client-dash-subtitle">
+                    {company_name} • Analiză predictivă bazată pe indicatorii financiari calculați
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="client-user-pill">{st.session_state.username}</div>
-</div>
-"""
+        """
     )
 
     if not history:
@@ -1395,20 +1423,20 @@ def render_client_risk_page():
 
     st.html(
         f"""
-<div class="risk-page-hero">
-    <div>
-        <div class="risk-page-eyebrow">Predicție curentă</div>
-        <div class="risk-page-title">{risk_label} • {_fmt_percent_direct(risk)}</div>
-        <div class="risk-page-subtitle">
-            {risk_description}
+        <div class="risk-page-hero">
+            <div>
+                <div class="risk-page-eyebrow">Predicție curentă</div>
+                <div class="risk-page-title">{risk_label} • {_fmt_percent_direct(risk)}</div>
+                <div class="risk-page-subtitle">
+                    {risk_description}
+                </div>
+            </div>
+            <div class="risk-page-score {risk_class}">
+                <div class="risk-page-score-value">{_fmt_percent_direct(risk)}</div>
+                <div class="risk-page-score-label">probabilitate faliment</div>
+            </div>
         </div>
-    </div>
-    <div class="risk-page-score {risk_class}">
-        <div class="risk-page-score-value">{_fmt_percent_direct(risk)}</div>
-        <div class="risk-page-score-label">probabilitate faliment</div>
-    </div>
-</div>
-"""
+        """
     )
 
     c1, c2, c3, c4 = st.columns(4)
@@ -1448,27 +1476,39 @@ def render_client_risk_page():
             x="date",
             y="risk_display",
             title="Trend risc faliment - toate lunile",
+            markers=True,
         )
+
         _apply_dark_chart_layout(fig_risk, height=390)
+        _add_risk_thresholds(fig_risk)
+
+        fig_risk.update_traces(
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Risc estimat: %{y:.1f}%"
+                "<extra></extra>"
+            )
+        )
+
         st.plotly_chart(fig_risk, use_container_width=True, config=PLOTLY_CONFIG)
 
     with right_col:
         st.html(
             f"""
-<div class="risk-explain-card">
-    <div class="risk-explain-title">Interpretare predicție</div>
-    <div class="risk-explain-main {risk_class}">
-        {risk_label}
-    </div>
-    <div class="risk-explain-text">
-        Modelul a estimat o probabilitate de {_fmt_percent_direct(risk)} pe baza indicatorilor calculați
-        din ultima perioadă financiară validată.
-    </div>
-    <div class="risk-explain-note">
-        Predicția este un semnal analitic, nu o decizie financiară absolută.
-    </div>
-</div>
-"""
+            <div class="risk-explain-card">
+                <div class="risk-explain-title">Interpretare predicție</div>
+                <div class="risk-explain-main {risk_class}">
+                    {risk_label}
+                </div>
+                <div class="risk-explain-text">
+                    Modelul a estimat o probabilitate de {_fmt_percent_direct(risk)} pe baza indicatorilor calculați
+                    din ultima perioadă financiară validată.
+                </div>
+                <div class="risk-explain-note">
+                    Predicția este un semnal analitic, nu o decizie financiară absolută.
+                </div>
+            </div>
+            """
         )
 
     st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
@@ -1479,23 +1519,45 @@ def render_client_risk_page():
         df_3 = df.tail(3)
         fig_3 = px.line(df_3, x="date", y="risk_display", markers=True, title="Ultimele 3 luni")
         _apply_dark_chart_layout(fig_3, height=300)
+        _add_risk_thresholds(fig_3)
+        fig_3.update_traces(
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Risc estimat: %{y:.1f}%"
+                "<extra></extra>"
+            )
+        )
         st.plotly_chart(fig_3, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_b:
         df_6 = df.tail(6)
         fig_6 = px.line(df_6, x="date", y="risk_display", markers=True, title="Ultimele 6 luni")
         _apply_dark_chart_layout(fig_6, height=300)
+        _add_risk_thresholds(fig_6)
+        fig_6.update_traces(
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Risc estimat: %{y:.1f}%"
+                "<extra></extra>"
+            )
+        )
         st.plotly_chart(fig_6, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_c:
         df_12 = df.tail(12)
         fig_12 = px.line(df_12, x="date", y="risk_display", markers=True, title="Ultimele 12 luni")
         _apply_dark_chart_layout(fig_12, height=300)
+        _add_risk_thresholds(fig_12)
+        fig_12.update_traces(
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Risc estimat: %{y:.1f}%"
+                "<extra></extra>"
+            )
+        )
         st.plotly_chart(fig_12, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
-
-    importances = latest.get("importanta_indicatori", {})
 
     shap_data = latest.get("importanta_indicatori", {}) or {}
 
@@ -1569,15 +1631,15 @@ def render_client_risk_page():
 
         with right_shap:
             base_value = shap_data.get("base_value")
-            explained_class = shap_data.get("explained_class", "FALIMENT")
+            explained_class = "Risc de faliment"
 
             st.html(
                 f"""
                 <div class="shap-summary-card">
-                    <div class="shap-summary-title">Cum se citește explicația?</div>
+                    <div class="shap-summary-title">Cum citim explicația?</div>
 
                     <div class="shap-summary-row">
-                        <span>Clasa explicată</span>
+                        <span>Predicție explicată</span>
                         <strong>{explained_class}</strong>
                     </div>
 
@@ -1676,16 +1738,15 @@ def render_client_dashboard():
 
     st.html(
         f"""
-<div class="client-dash-header">
-    <div>
-        <div class="client-dash-title">Financial Dashboard</div>
-        <div class="client-dash-subtitle">
-            {company_name} • Monitorizare KPI, risc financiar și evoluție în timp
+        <div class="client-dash-header">
+            <div>
+                <div class="client-dash-title">Financial Dashboard</div>
+                <div class="client-dash-subtitle">
+                    {company_name} • Monitorizare KPI, risc financiar și evoluție în timp
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="client-user-pill">{st.session_state.username}</div>
-</div>
-"""
+        """
     )
 
     if not history:
@@ -1737,19 +1798,19 @@ def render_client_dashboard():
 
     st.html(
         f"""
-<div class="dash-hero">
-    <div>
-        <div class="dash-hero-eyebrow">Ultima perioadă analizată</div>
-        <div class="dash-hero-title">{latest.get("date")}</div>
-        <div class="dash-hero-subtitle">
-            Date financiare validate și procesate automat prin modelul ML.
+        <div class="dash-hero">
+            <div>
+                <div class="dash-hero-eyebrow">Ultima perioadă analizată</div>
+                <div class="dash-hero-title">{latest.get("date")}</div>
+                <div class="dash-hero-subtitle">
+                    Date financiare validate și procesate automat prin modelul ML.
+                </div>
+            </div>
+            <div class="dash-risk-pill {risk_class}">
+                {risk_label} • {_fmt_percent_direct(risk)}
+            </div>
         </div>
-    </div>
-    <div class="dash-risk-pill {risk_class}">
-        {risk_label} • {_fmt_percent_direct(risk)}
-    </div>
-</div>
-"""
+        """
     )
 
     c1, c2, c3, c4 = st.columns(4)
@@ -1855,34 +1916,56 @@ def render_client_dashboard():
             df,
             x="date",
             y="venituri",
-            title="Evoluție venituri",
+            title="Evoluție venituri și profit net",
         )
+
+        fig_revenue_profit.update_traces(
+            name="Venituri",
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Venituri: %{y:,.0f} RON"
+                "<extra></extra>"
+            ),
+        )
+
         fig_revenue_profit.add_scatter(
             x=df["date"],
             y=df["profit"],
             mode="lines+markers",
-            name="Profit",
+            name="Profit net",
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Profit net: %{y:,.0f} RON"
+                "<extra></extra>"
+            ),
         )
+
         _apply_dark_chart_layout(fig_revenue_profit, height=390)
+
+        fig_revenue_profit.update_yaxes(
+            tickprefix="",
+            ticksuffix=" RON",
+        )
+
         st.plotly_chart(fig_revenue_profit, use_container_width=True, config=PLOTLY_CONFIG)
 
     with right_col:
         st.html(
             f"""
-<div class="dash-risk-card">
-    <div class="dash-risk-title">Scor curent de risc</div>
-    <div class="dash-risk-subtitle">Probabilitate estimată de faliment</div>
-
-    <div class="dash-risk-circle {risk_class}">
-        <div class="dash-risk-value">{_fmt_percent_direct(risk)}</div>
-        <div class="dash-risk-label">{risk_label}</div>
-    </div>
-
-    <div class="dash-risk-note">
-        Modelul ML analizează indicatorii financiari calculați din datele validate.
-    </div>
-</div>
-"""
+            <div class="dash-risk-card">
+                <div class="dash-risk-title">Scor curent de risc</div>
+                <div class="dash-risk-subtitle">Probabilitate estimată de faliment</div>
+            
+                <div class="dash-risk-circle {risk_class}">
+                    <div class="dash-risk-value">{_fmt_percent_direct(risk)}</div>
+                    <div class="dash-risk-label">{risk_label}</div>
+                </div>
+            
+                <div class="dash-risk-note">
+                    Modelul ML analizează indicatorii financiari calculați din datele validate.
+                </div>
+            </div>
+            """
         )
 
     st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
@@ -1905,9 +1988,25 @@ def render_client_dashboard():
             x="Categorie",
             y="Valoare",
             title="Structura financiară curentă",
-            text_auto=".2s",
+            text="Valoare",
         )
+
         _apply_dark_chart_layout(fig_structure, height=360)
+
+        fig_structure.update_traces(
+            texttemplate="%{text:,.0f}",
+            textposition="outside",
+            hovertemplate=(
+                "%{x}<br>"
+                "Valoare: %{y:,.0f} RON"
+                "<extra></extra>"
+            ),
+        )
+
+        fig_structure.update_yaxes(
+            ticksuffix=" RON",
+        )
+
         st.plotly_chart(fig_structure, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_b:
@@ -1916,8 +2015,20 @@ def render_client_dashboard():
             x="date",
             y="risk_display",
             title="Evoluția riscului de faliment",
+            markers=True,
         )
+
         _apply_dark_chart_layout(fig_risk, height=360)
+        _add_risk_thresholds(fig_risk)
+
+        fig_risk.update_traces(
+            hovertemplate=(
+                "Perioadă: %{x}<br>"
+                "Risc estimat: %{y:.1f}%"
+                "<extra></extra>"
+            )
+        )
+
         st.plotly_chart(fig_risk, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="divider-space"></div>', unsafe_allow_html=True)
@@ -1959,31 +2070,32 @@ def render_client_dashboard():
             use_container_width=True,
             config=PLOTLY_CONFIG,
         )
-    st.markdown(
-        """
-        <div class="dark-section-title">Istoric financiar</div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.expander("Istoric financiar detaliat", expanded=False):
+        st.markdown(
+            """
+            <div class="dark-section-title">Date financiare procesate</div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    columns_to_show = [
-        "date",
-        "venituri",
-        "profit",
-        "active_totale",
-        "datorii_totale",
-        "capitaluri_proprii",
-        "risk_display",
-        "eticheta",
-    ]
+        columns_to_show = [
+            "date",
+            "venituri",
+            "profit",
+            "active_totale",
+            "datorii_totale",
+            "capitaluri_proprii",
+            "risk_display",
+            "eticheta",
+        ]
 
-    columns_to_show = [col for col in columns_to_show if col in df.columns]
+        columns_to_show = [col for col in columns_to_show if col in df.columns]
 
-    st.dataframe(
-        df[columns_to_show],
-        use_container_width=True,
-        hide_index=True,
-    )
+        st.dataframe(
+            df[columns_to_show],
+            use_container_width=True,
+            hide_index=True,
+        )
 
 def _client_report_status_label(status: str):
     labels = {

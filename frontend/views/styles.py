@@ -58,10 +58,62 @@ def load_global_styles():
             background: #0f172a !important;
         }
         
+        /* Brand card sidebar */
+        .sidebar-brand-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background:
+                radial-gradient(circle at top right, rgba(59, 130, 246, 0.20), transparent 38%),
+                linear-gradient(180deg, #12223b 0%, #0b1728 100%);
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 18px;
+            padding: 16px 15px;
+            margin: 2.2rem 0 1.35rem 0;
+            box-shadow:
+                0 14px 32px rgba(2, 6, 23, 0.32),
+                0 0 28px rgba(37, 99, 235, 0.08);
+        }
+        
+        .sidebar-brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            background: rgba(37, 99, 235, 0.22);
+            border: 1px solid rgba(96, 165, 250, 0.34);
+            color: #bfdbfe !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.92rem;
+            font-weight: 950;
+            letter-spacing: -0.03em;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-brand-title {
+            color: #f8fafc !important;
+            font-size: 1.05rem;
+            font-weight: 900;
+            letter-spacing: -0.035em;
+            line-height: 1.15;
+        }
+        
+        .sidebar-brand-subtitle {
+            color: #8fa3c4 !important;
+            font-size: 0.76rem;
+            font-weight: 650;
+            margin-top: 3px;
+        }
+        
         section[data-testid="stSidebar"] * {
             color: white !important;
             visibility: visible !important;
             opacity: 1 !important;
+        }
+        
+        section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 0.65rem !important;
         }
         
         /* Ascunde butonul nativ Streamlit de închidere/sidebar collapse */
@@ -599,15 +651,6 @@ def load_global_styles():
             letter-spacing: -0.01em;
         }
 
-        .client-user-pill {
-            background: rgba(255, 255, 255, 0.96);
-            color: #0f172a;
-            border-radius: 999px;
-            padding: 11px 18px;
-            font-weight: 600;
-            box-shadow: 0 18px 38px rgba(0, 0, 0, 0.25);
-        }
-
         .dash-hero,
         .risk-page-hero,
         .shap-section-header,
@@ -1059,10 +1102,10 @@ def load_global_styles():
 
         .shap-factor-card {
             padding: 24px;
-            height: 485px;
             min-height: 485px;
-            max-height: 485px;
-            overflow: hidden;
+            height: auto;
+            max-height: none;
+            overflow: visible;
         }
 
         .shap-factor-card-title {

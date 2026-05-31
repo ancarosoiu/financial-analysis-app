@@ -110,7 +110,7 @@ def render_auth_page():
             """
             <div class="auth-brand-row">
                 <div class="auth-brand-icon">▥</div>
-                <div class="auth-brand-name">Financial Insight Pro</div>
+                <div class="auth-brand-name">Financial Insight</div>
             </div>
             """,
             unsafe_allow_html=True,

@@ -18,7 +18,7 @@ from views.styles import load_global_styles
 
 
 st.set_page_config(
-    page_title="Financial Insight Pro",
+    page_title="Financial Insight",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -30,9 +30,18 @@ load_global_styles()
 
 def render_sidebar():
     with st.sidebar:
-        st.markdown("## Financial Insight Pro")
-        st.caption(f"Logged in as {st.session_state.username}")
-        st.write(f"**Role:** {st.session_state.role}")
+        st.markdown(
+            """
+            <div class="sidebar-brand-card">
+                <div class="sidebar-brand-icon">FI</div>
+                <div>
+                    <div class="sidebar-brand-title">Financial Insight</div>
+                    <div class="sidebar-brand-subtitle">Financial analytics</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if st.session_state.role == "client":
             st.write("---")
