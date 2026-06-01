@@ -315,10 +315,6 @@ def load_global_styles():
             -webkit-user-select: text !important;
         }
 
-        .stTextInput input::placeholder {
-            color: #a0aec0 !important;
-        }
-
         .stTextInput [data-baseweb="input"] button {
             color: #64748b !important;
             height: 38px !important;
@@ -364,8 +360,48 @@ def load_global_styles():
             -webkit-user-select: text !important;
         }
 
-        .stTextArea textarea::placeholder {
-            color: #98a2b3 !important;
+        /* Placeholder global mai discret pentru inputuri si textarea */
+        .stTextInput input::placeholder,
+        .stTextArea textarea::placeholder,
+        div[data-testid="stDialog"] .stTextInput input::placeholder,
+        div[data-testid="stDialog"] .stTextArea textarea::placeholder {
+            color: #94a3b8 !important;
+            -webkit-text-fill-color: #94a3b8 !important;
+            opacity: 1 !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Compatibilitate Chrome / Firefox */
+        .stTextInput input::-webkit-input-placeholder,
+        .stTextArea textarea::-webkit-input-placeholder {
+            color: #94a3b8 !important;
+            -webkit-text-fill-color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+        
+        .stTextInput input::-moz-placeholder,
+        .stTextArea textarea::-moz-placeholder {
+            color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+        
+        /* Textul scris efectiv de utilizator rămâne clar */
+        .stTextInput input,
+        .stTextArea textarea {
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
+            caret-color: #2563eb !important;
+        }
+        
+        /* Chrome autofill / password manager */
+        .stTextInput input:-webkit-autofill,
+        .stTextInput input:-webkit-autofill:hover,
+        .stTextInput input:-webkit-autofill:focus,
+        .stTextInput input:-webkit-autofill:active {
+            -webkit-text-fill-color: #0f172a !important;
+            caret-color: #2563eb !important;
+            box-shadow: 0 0 0 1000px #ffffff inset !important;
+            transition: background-color 9999s ease-in-out 0s !important;
         }
 
         .stSelectbox [data-baseweb="select"] {
@@ -1633,10 +1669,6 @@ def load_global_styles():
             border-radius: 12px !important;
             color: #101828 !important;
             font-size: 0.92rem !important;
-        }
-
-        div[data-testid="stDialog"] textarea::placeholder {
-            color: #98a2b3 !important;
         }
 
         div[data-testid="stDialog"] button {

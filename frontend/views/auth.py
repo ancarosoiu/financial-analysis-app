@@ -8,13 +8,17 @@ def render_login_form():
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input(
             "Username",
-            placeholder="nume_utilizator",
+            placeholder="Introduceți username-ul",
+            autocomplete="off",
+            key="login_username_input",
         )
 
         password = st.text_input(
             "Parolă",
             type="password",
-            placeholder="••••••••",
+            placeholder="Introduceți parola",
+            autocomplete="off",
+            key="login_password_input",
         )
 
         submitted = st.form_submit_button(
@@ -52,23 +56,31 @@ def render_register_form():
         username = st.text_input(
             "Username",
             placeholder="ex. anca.popescu",
+            autocomplete="off",
+            key="register_username_input",
         )
 
         email = st.text_input(
             "Email",
             placeholder="nume@exemplu.ro",
+            autocomplete="off",
+            key="register_email_input",
         )
 
         password = st.text_input(
             "Parolă",
             type="password",
             placeholder="Minim 8 caractere, literă mare, cifră și caracter special",
+            autocomplete="off",
+            key="register_password_input",
         )
 
         confirm_password = st.text_input(
             "Confirmă parola",
             type="password",
             placeholder="Reintrodu parola",
+            autocomplete="off",
+            key="register_confirm_password_input",
         )
 
         submitted = st.form_submit_button(
