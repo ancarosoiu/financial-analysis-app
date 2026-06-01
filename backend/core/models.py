@@ -357,6 +357,14 @@ class ReportRequest(models.Model):
     )
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='report_requests')
+    base_report = models.ForeignKey(
+        'BaseReport',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='custom_requests',
+        verbose_name="Raport standard de referință"
+    )
     analyst = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

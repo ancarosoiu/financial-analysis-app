@@ -368,10 +368,17 @@ def download_standard_report(report_id: int, access_token: str):
         }
 
 
-def create_report_request(company_id: int, message: str, access_token: str):
+def create_report_request(
+    company_id: int,
+    message: str,
+    access_token: str,
+    base_report_id: int | None = None,
+):
     url = f"{BASE_URL}/companies/{company_id}/reports/request/"
+
     payload = {
         "message": message,
+        "base_report_id": base_report_id,
     }
 
     try:
@@ -388,7 +395,6 @@ def create_report_request(company_id: int, message: str, access_token: str):
             "success": False,
             "message": "Solicitarea raportului personalizat nu a putut fi trimisă.",
         }
-
 
 def get_client_report_requests(company_id: int, access_token: str):
     url = f"{BASE_URL}/companies/{company_id}/reports/requests/"

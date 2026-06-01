@@ -2140,7 +2140,7 @@ def _fmt_report_probability(value):
 
 
 @st.dialog("Solicitare raport personalizat", width="large")
-def render_client_report_request_modal():
+def render_client_report_request_modal(standard_reports: list):
     st.markdown(
         """
         <div class="review-modal-header">
@@ -2148,7 +2148,7 @@ def render_client_report_request_modal():
             <div>
                 <div class="review-modal-title">Solicitare raport personalizat</div>
                 <div class="review-modal-subtitle">
-                    Transmite analistului cerințele tale pentru o interpretare suplimentară.
+                    Selectează raportul standard de referință și transmite cerințele pentru analist.
                 </div>
             </div>
         </div>
@@ -2156,11 +2156,36 @@ def render_client_report_request_modal():
         unsafe_allow_html=True,
     )
 
+    if not standard_reports:
+        st.warning(
+            "Nu există rapoarte standard disponibile. Solicitarea personalizată poate fi creată după generarea unui raport standard."
+        )
+        return
+
+    report_options = {}
+
+    for report in standard_reports:
+        report_id = report.get("id")
+        balance_date = report.get("data_bilant") or "—"
+        risk_status = report.get("status_risc") or "—"
+        probability = _fmt_report_probability(report.get("probabilitate_faliment"))
+
+        label = f"{balance_date} • {risk_status} • Probabilitate {probability}"
+        report_options[label] = report_id
+
+    selected_report_label = st.selectbox(
+        "Raport standard de referință",
+        options=list(report_options.keys()),
+    )
+
+    selected_base_report_id = report_options.get(selected_report_label)
+
     st.markdown(
         """
         <div class="review-warning-box">
             <div class="review-warning-title">Recomandare</div>
             <div class="review-warning-text">
+                Raportul personalizat va porni de la perioada selectată mai sus.
                 Scrie clar ce vrei să urmărească analistul: lichiditate, profitabilitate,
                 îndatorare, risc financiar, evoluția veniturilor sau recomandări de îmbunătățire.
             </div>
@@ -2185,8 +2210,8 @@ def render_client_report_request_modal():
     message = st.text_area(
         "Cerința pentru analist",
         placeholder=(
-            "Exemplu: Aș dori o interpretare a riscului financiar curent și recomandări "
-            "privind îmbunătățirea lichidității și reducerea gradului de îndatorare."
+            "Exemplu: Aș dori o interpretare a riscului financiar pentru perioada selectată "
+            "și recomandări privind îmbunătățirea lichidității."
         ),
         height=170,
     )
@@ -2214,6 +2239,7 @@ def render_client_report_request_modal():
             return
 
         final_message = (
+            f"Raport standard de referință: {selected_report_label}\n\n"
             f"Zonă principală de interes: {focus_area}\n\n"
             f"Cerință client:\n{clean_message}"
         )
@@ -2223,14 +2249,15 @@ def render_client_report_request_modal():
                 company_id=company_id,
                 message=final_message,
                 access_token=st.session_state.access_token,
+                base_report_id=selected_base_report_id,
             )
 
         if result.get("success"):
             st.success("Solicitarea a fost trimisă cu succes către analist.")
             st.rerun()
+            return
 
         st.error(result.get("message", "Solicitarea nu a putut fi trimisă."))
-
 
 def render_client_standard_report_row(report: dict):
     report_id = report.get("id")
@@ -2560,32 +2587,6 @@ def render_client_reports_page():
     if "client_report_period_filter" not in st.session_state:
         st.session_state.client_report_period_filter = "Toate"
 
-    header_left, header_right = st.columns([2.4, 1], vertical_alignment="center")
-
-    with header_left:
-        st.markdown(
-            """
-            <div class="dashboard-header compact-header">
-                <div>
-                    <div class="page-title-dark">Rapoarte financiare</div>
-                    <div class="page-subtitle-dark">
-                        Descarcă rapoarte standard sau solicită o interpretare personalizată de la analist.
-                    </div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with header_right:
-        st.markdown(
-            '<div class="client-import-action-space"></div>',
-            unsafe_allow_html=True,
-        )
-
-        if st.button("Solicită raport personalizat", use_container_width=True):
-            render_client_report_request_modal()
-
     company_id = st.session_state.company_id
 
     if not company_id:
@@ -2612,6 +2613,32 @@ def render_client_reports_page():
 
     standard_reports = standard_result.get("data", [])
     custom_requests = requests_result.get("data", [])
+
+    header_left, header_right = st.columns([2.4, 1], vertical_alignment="center")
+
+    with header_left:
+        st.markdown(
+            """
+            <div class="dashboard-header compact-header">
+                <div>
+                    <div class="page-title-dark">Rapoarte financiare</div>
+                    <div class="page-subtitle-dark">
+                        Descarcă rapoarte standard sau solicită o interpretare personalizată de la analist.
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with header_right:
+        st.markdown(
+            '<div class="client-import-action-space"></div>',
+            unsafe_allow_html=True,
+        )
+
+        if st.button("Solicită raport personalizat", use_container_width=True):
+            render_client_report_request_modal(standard_reports)
 
     st.markdown(
         """

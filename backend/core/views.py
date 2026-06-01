@@ -1099,6 +1099,9 @@ class ClientReportRequestListView(APIView):
             ).select_related(
                 "company",
                 "analyst",
+                "base_report",
+                "base_report__snapshot",
+                "base_report__snapshot__statement",
             ).order_by("-created_at")
 
             data = []
@@ -1118,6 +1121,19 @@ class ClientReportRequestListView(APIView):
                     "generated_at": (
                         custom_report.generated_at.strftime("%d/%m/%Y %H:%M")
                         if custom_report else None
+                    ),
+                    "base_report_id": req.base_report.id if req.base_report else None,
+                    "base_report_date": (
+                        req.base_report.snapshot.statement.reporting_date.strftime("%d/%m/%Y")
+                        if req.base_report else None
+                    ),
+                    "base_report_risk_status": (
+                        req.base_report.snapshot.prediction_label
+                        if req.base_report else None
+                    ),
+                    "base_report_probability": (
+                        req.base_report.snapshot.bankruptcy_probability
+                        if req.base_report else None
                     ),
                 })
 
@@ -1148,6 +1164,9 @@ class AnalystReportRequestListView(APIView):
             "company",
             "company__owner",
             "analyst",
+            "base_report",
+            "base_report__snapshot",
+            "base_report__snapshot__statement",
         ).order_by("-created_at")
 
         if user.role == "analyst" and not user.is_staff:
@@ -1177,6 +1196,19 @@ class AnalystReportRequestListView(APIView):
                 "generated_at": (
                     custom_report.generated_at.strftime("%d/%m/%Y %H:%M")
                     if custom_report else None
+                ),
+                "base_report_id": req.base_report.id if req.base_report else None,
+                "base_report_date": (
+                    req.base_report.snapshot.statement.reporting_date.strftime("%d/%m/%Y")
+                    if req.base_report else None
+                ),
+                "base_report_risk_status": (
+                    req.base_report.snapshot.prediction_label
+                    if req.base_report else None
+                ),
+                "base_report_probability": (
+                    req.base_report.snapshot.bankruptcy_probability
+                    if req.base_report else None
                 ),
             })
 
@@ -1257,6 +1289,7 @@ class CreateReportRequestView(APIView):
             )
 
         client_message = request.data.get("message", "").strip()
+        base_report_id = request.data.get("base_report_id")
 
         if not client_message:
             return Response(
@@ -1278,8 +1311,38 @@ class CreateReportRequestView(APIView):
                     status=400,
                 )
 
+            base_report = None
+
+            if base_report_id:
+                try:
+                    base_report = BaseReport.objects.select_related(
+                        "snapshot",
+                        "snapshot__statement",
+                        "snapshot__statement__company",
+                    ).get(
+                        id=base_report_id,
+                        snapshot__statement__company=company,
+                    )
+                except BaseReport.DoesNotExist:
+                    return Response(
+                        {
+                            "error": (
+                                "Raportul standard selectat nu există sau nu aparține acestei companii."
+                            )
+                        },
+                        status=400,
+                    )
+            else:
+                return Response(
+                    {
+                        "error": "Selectează raportul standard de referință pentru solicitarea personalizată."
+                    },
+                    status=400,
+                )
+
             report_request = ReportRequest.objects.create(
                 company=company,
+                base_report=base_report,
                 analyst=company.analyst,
                 client_message=client_message,
                 status="pending",
@@ -1291,7 +1354,8 @@ class CreateReportRequestView(APIView):
                 title="Solicitare raport personalizat",
                 message=(
                     f"Clientul {user.username} a solicitat o analiză personalizată "
-                    f"pentru firma {company.name}."
+                    f"pentru firma {company.name}, pe baza raportului standard din "
+                    f"{base_report.snapshot.statement.reporting_date.strftime('%d/%m/%Y')}."
                 ),
                 action_url=f"/analyst/reports/{report_request.id}",
             )
