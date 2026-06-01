@@ -195,6 +195,18 @@ def load_global_styles():
             line-height: 1.7;
             font-weight: 500;
         }
+        
+        .register-info-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            font-weight: 650;
+            margin-bottom: 1rem;
+        }
 
         .stTabs {
             background: #ffffff;
@@ -292,11 +304,15 @@ def load_global_styles():
             height: 40px !important;
             font-size: 0.92rem !important;
             color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+            caret-color: #2563eb !important;
             background: white !important;
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
             border-radius: 7px !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
         }
 
         .stTextInput input::placeholder {
@@ -340,8 +356,12 @@ def load_global_styles():
             border: 1px solid #d9e1ec !important;
             border-radius: 12px !important;
             color: #101828 !important;
+            -webkit-text-fill-color: #101828 !important;
+            caret-color: #2563eb !important;
             font-size: 0.92rem !important;
             box-shadow: none !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
         }
 
         .stTextArea textarea::placeholder {
@@ -432,8 +452,16 @@ def load_global_styles():
             }
             
         .stAlert {
-            border-radius: 10px;
-            font-size: 0.9rem;
+            border-radius: 14px !important;
+            font-size: 0.92rem !important;
+            line-height: 1.45 !important;
+            border: 1px solid rgba(248, 113, 113, 0.28) !important;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08) !important;
+        }
+        
+        .stAlert p {
+            font-weight: 650 !important;
+            line-height: 1.5 !important;
         }
 
         /* =========================
@@ -1222,24 +1250,25 @@ def load_global_styles():
             font-size: 1.05rem;
         }
 
-        /* =========================
+         /* =========================
            ONBOARDING
         ========================= */
+        
         .onboarding-stepper {
             max-width: 560px;
-            margin: 0 auto 1.7rem auto;
+            margin: 0 auto 1.25rem auto;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-
+        
         .step-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             min-width: 90px;
         }
-
+        
         .step-circle {
             width: 34px;
             height: 34px;
@@ -1251,136 +1280,202 @@ def load_global_styles():
             font-size: 0.9rem;
             margin-bottom: 8px;
         }
-
+        
         .step-circle.active,
         .step-circle.done {
             background: #2563eb;
             color: white;
         }
-
+        
         .step-circle.active {
             box-shadow: 0 8px 18px rgba(37, 99, 235, 0.28);
         }
-
+        
         .step-circle.idle {
-            background: white;
-            color: #98a2b3;
+            background: #f8fbff;
+            color: #94a3b8;
             border: 1px solid #cbd5e1;
         }
-
+        
         .step-text {
             color: #64748b;
             font-size: 0.82rem;
-            font-weight: 600;
+            font-weight: 650;
         }
-
+        
         .step-line {
             height: 2px;
             width: 90px;
             background: #cbd5e1;
             margin: 0 -8px 22px -8px;
         }
-
+        
         .step-line.active-line {
             background: #2563eb;
         }
-
+        
+        /* Card general pentru pasul 1 si pasul 3 */
         .onboarding-card,
         .confirm-panel {
-            background: white;
-            border-radius: 18px;
-            border: 1px solid #eef2f6;
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+            background:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 34%),
+                linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            border-radius: 22px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            box-shadow: 0 22px 55px rgba(15, 23, 42, 0.10);
         }
-
+        
         .onboarding-card {
-            padding: 28px 34px;
-            max-width: 720px;
-            margin: 0 auto 1.5rem auto;
+            padding: 22px 28px;
+            max-width: 700px;
+            margin: 0 auto 1rem auto;
         }
-
+        
         .onboarding-icon {
-            width: 54px;
-            height: 54px;
-            border-radius: 999px;
-            background: #eaf2ff;
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            background: #dbeafe;
             color: #2563eb;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 14px auto;
-            font-size: 26px;
-            font-weight: 900;
+            margin: 0 auto 12px auto;
+            font-size: 1.35rem;
+            font-weight: 950;
         }
-
+        
         .onboarding-icon.upload,
         .onboarding-icon.success {
             background: #dcfce7;
             color: #16a34a;
         }
-
+        
         .onboarding-card-title {
             text-align: center;
-            color: #101828;
-            font-size: 1.35rem;
-            font-weight: 850;
+            color: #0f172a;
+            font-size: 1.32rem;
+            font-weight: 950;
+            letter-spacing: -0.04em;
             margin-bottom: 6px;
         }
-
+        
         .onboarding-card-subtitle {
             text-align: center;
-            color: #667085;
-            font-size: 0.95rem;
-            margin-bottom: 1.25rem;
+            color: #526173;
+            font-size: 0.94rem;
+            line-height: 1.45;
+            margin-bottom: 1rem;
         }
-
-        .upload-box {
-            border: 1.5px dashed #cbd5e1;
-            border-radius: 16px;
-            background: #f8fafc;
-            padding: 34px 20px;
+        
+        /* Card compact pentru pasul de upload */
+        .onboarding-upload-card {
+            max-width: 660px;
+            margin: 0.55rem auto 0.95rem auto;
+            padding: 20px 26px 18px 26px;
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 36%),
+                linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            box-shadow: 0 22px 55px rgba(15, 23, 42, 0.10);
             text-align: center;
-            margin: 0.9rem 0 1rem 0;
         }
-
-        .upload-big-icon {
-            color: #94a3b8;
-            font-size: 2.2rem;
-            font-weight: 900;
-            margin-bottom: 8px;
+        
+        .onboarding-upload-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 18px;
+            margin: 0 auto 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #dbeafe;
+            color: #2563eb;
+            font-size: 1.3rem;
+            font-weight: 950;
         }
-
-        .upload-title {
-            color: #344054;
-            font-weight: 700;
-            margin-bottom: 4px;
+        
+        .onboarding-upload-title {
+            color: #0f172a;
+            font-size: 1.28rem;
+            font-weight: 950;
+            letter-spacing: -0.04em;
+            margin-bottom: 5px;
         }
-
-        .upload-subtitle {
-            color: #667085;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+        
+        .onboarding-upload-subtitle {
+            color: #526173;
+            font-size: 0.93rem;
+            line-height: 1.45;
+            margin-bottom: 12px;
         }
-
-        .upload-format {
-            color: #98a2b3;
-            font-size: 0.8rem;
+        
+        .onboarding-upload-note {
+            background: rgba(219, 234, 254, 0.62);
+            border: 1px solid rgba(147, 197, 253, 0.55);
+            border-radius: 16px;
+            padding: 11px 13px;
+            text-align: left;
+            max-width: 540px;
+            margin: 0 auto;
         }
-
+        
+        .onboarding-upload-note-title {
+            color: #1e3a8a;
+            font-size: 0.86rem;
+            font-weight: 850;
+            margin-bottom: 3px;
+        }
+        
+        .onboarding-upload-note-text {
+            color: #475569;
+            font-size: 0.83rem;
+            line-height: 1.45;
+        }
+        
+        /* Uploader real Streamlit - aliniat cu butoanele */
+        div[data-testid="stFileUploader"] {
+            width: 100% !important;
+            margin: 0 auto 1.05rem auto !important;
+        }
+        
+        div[data-testid="stFileUploader"] > label {
+            display: none !important;
+        }
+        
+        div[data-testid="stFileUploader"] section {
+            width: 100% !important;
+            min-height: 78px !important;
+            border-radius: 16px !important;
+            background: #272934 !important;
+            border: 1px solid rgba(148, 163, 184, 0.18) !important;
+            padding: 14px 16px !important;
+            box-sizing: border-box !important;
+        }
+        
+        div[data-testid="stFileUploader"] section button {
+            border-radius: 12px !important;
+        }
+        
+        div[data-testid="stFileUploader"] small {
+            display: none !important;
+        }
+        
+        /* Confirmare */
         .confirm-panel {
             padding: 22px 24px;
-            border-color: #e5e7eb;
-            margin-top: -1rem;
+            margin-top: -0.5rem;
             color: #101828;
         }
-
+        
         .confirm-title {
             color: #101828;
             font-size: 1.15rem;
             font-weight: 850;
             margin-bottom: 14px;
         }
-
+        
         .confirm-summary {
             background: #f8fafc;
             border: 1px solid #e5e7eb;
@@ -1388,7 +1483,7 @@ def load_global_styles():
             overflow: hidden;
             margin-bottom: 18px;
         }
-
+        
         .confirm-row,
         .review-detail-row {
             display: flex;
@@ -1397,34 +1492,34 @@ def load_global_styles():
             padding: 14px 16px;
             border-bottom: 1px solid #e5e7eb;
         }
-
+        
         .confirm-row:last-child,
         .review-detail-row:last-child {
             border-bottom: none;
         }
-
+        
         .confirm-row span,
         .review-detail-row span {
             color: #667085;
             font-weight: 600;
         }
-
+        
         .confirm-row strong,
         .review-detail-row strong {
             color: #101828;
             font-weight: 800;
             text-align: right;
         }
-
+        
         .validation-note {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            color: #92400e;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
             border-radius: 12px;
             padding: 13px 15px;
             font-size: 0.92rem;
             line-height: 1.5;
-            font-weight: 600;
+            font-weight: 650;
         }
 
         /* =========================

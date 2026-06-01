@@ -57,13 +57,20 @@ def _render_onboarding_styles_override():
         """
         <style>
         .stApp {
-            background: #f4f7fb !important;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.14), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.10), transparent 32%),
+                linear-gradient(180deg, #eaf1fb 0%, #f4f7fb 52%, #edf4fb 100%) !important;
         }
 
         .block-container {
-            max-width: 1120px !important;
-            padding-top: 1.2rem !important;
-            padding-bottom: 2rem !important;
+            max-width: 1080px !important;
+            padding-top: 0.7rem !important;
+            padding-bottom: 1.2rem !important;
+        }
+
+        [data-testid="stHeader"] {
+            background: transparent !important;
         }
         </style>
         """,
@@ -210,53 +217,56 @@ def render_company_step():
             st.success(data.get("message", "Compania a fost salvată cu succes."))
             st.rerun()
 
+        else:
+            st.error(result.get("message", "Datele companiei nu au putut fi salvate."))
+            return
+
 
 def render_upload_step():
-    st.markdown(
+    st.html(
         """
-        <div class="onboarding-card">
-            <div class="onboarding-icon upload">↑</div>
-            <div class="onboarding-card-title">Încărcare date financiare</div>
-            <div class="onboarding-card-subtitle">
-                Încarcă fișierul Excel cu bilanț contabil și cont de profit și pierdere
+        <div class="onboarding-upload-card">
+            <div class="onboarding-upload-icon">↑</div>
+            <div class="onboarding-upload-title">Încărcare date financiare</div>
+            <div class="onboarding-upload-subtitle">
+                Încarcă fișierul Excel cu bilanț contabil și cont de profit și pierdere.
             </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
-    uploaded_file = st.file_uploader(
-        "Alege fișier Excel",
-        type=["xlsx", "xls"],
-        label_visibility="collapsed",
-    )
-
-    st.markdown(
-        """
-        <div class="upload-box">
-            <div class="upload-big-icon">⇧</div>
-            <div class="upload-title">Drag & drop fișierul Excel aici</div>
-            <div class="upload-subtitle">sau folosește selectorul de fișier de mai sus</div>
-            <div class="upload-format">Format acceptat: .xlsx, .xls | minimum 12 luni</div>
+            <div class="onboarding-upload-note">
+                <div class="onboarding-upload-note-title">Fișier necesar pentru analiză</div>
+                <div class="onboarding-upload-note-text">
+                    Selectează un fișier Excel în format .xlsx sau .xls.
+                    Datele vor fi trimise către analist pentru validare înainte de calculul KPI-urilor.
+                </div>
+            </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
-    col1, col2 = st.columns(2)
+    upload_left, upload_center, upload_right = st.columns([0.55, 4.9, 0.55])
 
-    with col1:
-        if st.button("Înapoi", use_container_width=True):
-            st.session_state.onboarding_step = 1
-            st.rerun()
+    with upload_center:
+        uploaded_file = st.file_uploader(
+            "",
+            type=["xlsx", "xls"],
+            key="onboarding_financial_file",
+            help="Încarcă fișierul cu date financiare. Format acceptat: .xlsx sau .xls.",
+            label_visibility="collapsed",
+        )
 
-    with col2:
-        upload_clicked = st.button("Trimite spre validare", use_container_width=True)
+        col1, col2 = st.columns(2)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        with col1:
+            if st.button("Înapoi", use_container_width=True):
+                st.session_state.onboarding_step = 1
+                st.rerun()
+
+        with col2:
+            upload_clicked = st.button("Trimite spre validare", use_container_width=True)
 
     if upload_clicked:
         if uploaded_file is None:
-            st.error("Încarcă un fișier înainte de trimitere.")
+            st.error("Încarcă un fișier Excel înainte de trimitere.")
             return
 
         company_id = st.session_state.company_id or st.session_state.onboarding_company_id
@@ -281,10 +291,11 @@ def render_upload_step():
             errors = result.get("errors", {})
 
             if errors.get("code") == "monthly_approved_upload_exists":
-                st.warning("Nu poți încărca un import nou deoarece există deja un import aprobat pentru luna curentă.")
+                st.warning(
+                    "Nu poți încărca un import nou deoarece există deja un import aprobat pentru luna curentă."
+                )
             else:
                 st.error(result.get("message", "Încărcarea fișierului a eșuat."))
-
 
 def render_confirm_step():
     company_name = st.session_state.onboarding_company_name or "Companie înregistrată"

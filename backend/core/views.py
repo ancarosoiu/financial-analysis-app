@@ -14,6 +14,7 @@ from datetime import timedelta
 from django.http import FileResponse
 import os, re, unicodedata
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email as django_validate_email
 
 def _clean_filename_part(value):
     value = str(value or "").strip()
@@ -67,6 +68,97 @@ def build_import_download_name(upload):
         extension = ".xlsx"
 
     return f"{company_name}_import_{date_part}{extension}"
+
+def _clean_text(value):
+    return str(value or "").strip()
+
+
+def _validate_company_name(value):
+    value = _clean_text(value)
+
+    if len(value) < 2:
+        return None, "Denumirea companiei trebuie să aibă cel puțin 2 caractere."
+
+    if len(value) > 255:
+        return None, "Denumirea companiei este prea lungă."
+
+    if not re.match(r"^[A-Za-zĂÂÎȘȚăâîșț0-9\s.,&'()/+-]+$", value):
+        return None, "Denumirea companiei conține caractere nepermise."
+
+    return value, None
+
+
+def _validate_cui(value):
+    value = _clean_text(value).upper().replace(" ", "")
+
+    if not value:
+        return None, "CUI-ul este obligatoriu."
+
+    if not re.match(r"^(RO)?[0-9]{2,10}$", value):
+        return None, "CUI-ul trebuie să fie de forma RO12345678 sau 12345678."
+
+    return value, None
+
+
+def _validate_optional_company_email(value):
+    value = _clean_text(value).lower()
+
+    if not value:
+        return "", None
+
+    try:
+        django_validate_email(value)
+    except ValidationError:
+        return None, "Emailul de contact al companiei nu este valid."
+
+    return value, None
+
+
+def _validate_optional_phone(value):
+    value = _clean_text(value)
+
+    if not value:
+        return "", None
+
+    normalized = value.replace(" ", "").replace("-", "")
+
+    if not re.match(r"^(\+40|0040|0)[0-9]{9}$", normalized):
+        return None, "Telefonul trebuie să fie un număr valid din România."
+
+    return normalized, None
+
+
+def _validate_optional_address(value):
+    value = _clean_text(value)
+
+    if not value:
+        return "", None
+
+    if len(value) < 5:
+        return None, "Adresa este prea scurtă."
+
+    if len(value) > 500:
+        return None, "Adresa este prea lungă."
+
+    return value, None
+
+
+def _validate_optional_industry(value):
+    value = _clean_text(value)
+
+    if not value:
+        return "", None
+
+    if len(value) > 100:
+        return None, "Domeniul de activitate este prea lung."
+
+    if value.lower() == "selectează..." or value.lower() == "selecteaza...":
+        return None, "Selectează un domeniu de activitate valid."
+
+    if not re.match(r"^[A-Za-zĂÂÎȘȚăâîșț0-9\s&/-]+$", value):
+        return None, "Domeniul de activitate conține caractere nepermise."
+
+    return value, None
 
 class RegisterClientView(generics.CreateAPIView):
     serializer_class = RegisterClientSerializer
@@ -306,20 +398,38 @@ class CompanyListView(APIView):
                 status=200
             )
 
-        name = request.data.get("name")
-        cui = request.data.get("cui")
-        industry = request.data.get("industry", "")
-        address = request.data.get("address", "")
-        phone_number = request.data.get("phone_number", "")
-        email_contact = request.data.get("email_contact", "")
+        raw_name = request.data.get("name")
+        raw_cui = request.data.get("cui")
+        raw_industry = request.data.get("industry", "")
+        raw_address = request.data.get("address", "")
+        raw_phone_number = request.data.get("phone_number", "")
+        raw_email_contact = request.data.get("email_contact", "")
 
-        if not name or not cui:
-            return Response(
-                {"error": "Denumirea companiei și CUI-ul sunt obligatorii."},
-                status=400
-            )
+        name, name_error = _validate_company_name(raw_name)
+        if name_error:
+            return Response({"error": name_error}, status=400)
 
-        if Company.objects.filter(cui=cui).exists():
+        cui, cui_error = _validate_cui(raw_cui)
+        if cui_error:
+            return Response({"error": cui_error}, status=400)
+
+        industry, industry_error = _validate_optional_industry(raw_industry)
+        if industry_error:
+            return Response({"error": industry_error}, status=400)
+
+        address, address_error = _validate_optional_address(raw_address)
+        if address_error:
+            return Response({"error": address_error}, status=400)
+
+        phone_number, phone_error = _validate_optional_phone(raw_phone_number)
+        if phone_error:
+            return Response({"error": phone_error}, status=400)
+
+        email_contact, email_error = _validate_optional_company_email(raw_email_contact)
+        if email_error:
+            return Response({"error": email_error}, status=400)
+
+        if Company.objects.filter(cui__iexact=cui).exists():
             return Response(
                 {"error": "Există deja o companie cu acest CUI."},
                 status=400

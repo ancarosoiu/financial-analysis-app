@@ -30,7 +30,7 @@ urlpatterns = [
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     path('register/client/', RegisterClientView.as_view(), name='register-client'),
-    path('register/analyst/', RegisterAnalystView.as_view(), name='register-analyst'),
+    # path('register/analyst/', RegisterAnalystView.as_view(), name='register-analyst'),
 
     path('companies/', CompanyListView.as_view(), name='company-list'),
     path('companies/<int:company_id>/dashboard/', DashboardDataView.as_view(), name='dashboard-data'),

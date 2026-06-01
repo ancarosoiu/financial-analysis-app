@@ -43,15 +43,28 @@ def render_sidebar():
             unsafe_allow_html=True,
         )
 
+        is_client_onboarding = (
+            st.session_state.role == "client"
+            and (
+                not st.session_state.get("is_onboarded", False)
+                or st.session_state.get("page") == "client_onboarding"
+            )
+        )
+
+        if is_client_onboarding:
+            st.write("---")
+
+            if st.button("Logout", use_container_width=True):
+                logout()
+                st.rerun()
+
+            return
+
         if st.session_state.role == "client":
             st.write("---")
 
             if st.button("Dashboard KPI", use_container_width=True):
-                st.session_state.page = (
-                    "client_dashboard"
-                    if st.session_state.is_onboarded
-                    else "client_onboarding"
-                )
+                st.session_state.page = "client_dashboard"
                 st.rerun()
 
             if st.button("Predicție ML / Risc", use_container_width=True):
@@ -65,11 +78,6 @@ def render_sidebar():
             if st.button("Rapoarte", use_container_width=True):
                 st.session_state.page = "client_reports"
                 st.rerun()
-
-            if not st.session_state.is_onboarded:
-                if st.button("Onboarding / Upload", use_container_width=True):
-                    st.session_state.page = "client_onboarding"
-                    st.rerun()
 
         elif st.session_state.role == "analyst":
             st.write("---")

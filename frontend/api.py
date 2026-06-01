@@ -3,6 +3,61 @@ import requests
 BASE_URL = "http://127.0.0.1:8000/api"
 
 
+def _format_backend_error(data):
+    field_labels = {
+        "full_name": "Nume complet",
+        "username": "Username",
+        "email": "Email",
+        "password": "Parolă",
+        "confirm_password": "Confirmare parolă",
+        "name": "Denumire companie",
+        "cui": "CUI",
+        "industry": "Domeniu de activitate",
+        "address": "Adresă",
+        "phone_number": "Telefon",
+        "email_contact": "Email contact",
+        "non_field_errors": "Eroare",
+        "detail": "Detaliu",
+        "error": "Eroare",
+        "message": "Mesaj",
+    }
+
+    def clean_value(value):
+        if isinstance(value, list):
+            return " ".join(str(item) for item in value)
+
+        if isinstance(value, dict):
+            parts = []
+
+            for key, val in value.items():
+                label = field_labels.get(key, key)
+                message = clean_value(val)
+
+                if not message:
+                    continue
+
+                if len(value) == 1:
+                    parts.append(message)
+                else:
+                    parts.append(f"{label}: {message}")
+
+            return "\n".join(parts)
+
+        return str(value)
+
+    if isinstance(data, dict):
+        for key in ["detail", "message", "error"]:
+            if data.get(key):
+                return clean_value(data.get(key))
+
+        return clean_value(data)
+
+    if isinstance(data, list):
+        return clean_value(data)
+
+    return str(data)
+
+
 def handle_response(response):
     try:
         data = response.json()
@@ -10,17 +65,18 @@ def handle_response(response):
         data = {"detail": "Răspuns invalid de la server."}
 
     if response.status_code >= 400:
-        message = (
-                data.get("detail")
-                or data.get("message")
-                or data.get("error")
-                or str(data)
-        )
-        return {"success": False, "message": message, "errors": data}
+        message = _format_backend_error(data)
 
-    return {"success": True, "data": data}
+        return {
+            "success": False,
+            "message": message or "A apărut o eroare la procesarea cererii.",
+            "errors": data,
+        }
 
-
+    return {
+        "success": True,
+        "data": data,
+    }
 def auth_headers(access_token: str):
     return {
         "Authorization": f"Bearer {access_token}"
@@ -55,18 +111,6 @@ def login_request(username: str, password: str):
 
 def register_client(payload: dict):
     url = f"{BASE_URL}/register/client/"
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        return handle_response(response)
-    except requests.RequestException:
-        return {
-            "success": False,
-            "message": "Nu s-a putut realiza conexiunea cu backend-ul."
-        }
-
-
-def register_analyst(payload: dict):
-    url = f"{BASE_URL}/register/analyst/"
     try:
         response = requests.post(url, json=payload, timeout=10)
         return handle_response(response)

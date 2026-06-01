@@ -1,5 +1,6 @@
 import streamlit as st
-from api import login_request, register_client, register_analyst
+
+from api import login_request, register_client
 from session import login_user
 
 
@@ -18,10 +19,12 @@ def render_login_form():
 
         submitted = st.form_submit_button(
             "Autentificare",
-            use_container_width=True
+            use_container_width=True,
         )
 
     if submitted:
+        username = username.strip()
+
         if not username or not password:
             st.error("Completează username-ul și parola.")
             return
@@ -33,14 +36,14 @@ def render_login_form():
             login_user(result)
             st.success("Autentificare reușită.")
             st.rerun()
-        else:
-            st.error(result.get("message", "Autentificarea a eșuat."))
+            return
+
+        st.error(result.get("message", "Autentificarea a eșuat."))
 
 
 def render_register_form():
-    with st.form("register_form", clear_on_submit=False):
-        role = st.selectbox("Tip utilizator", ["client", "analyst"])
 
+    with st.form("register_form", clear_on_submit=False):
         full_name = st.text_input(
             "Nume complet",
             placeholder="ex. Anca Popescu",
@@ -59,21 +62,25 @@ def render_register_form():
         password = st.text_input(
             "Parolă",
             type="password",
-            placeholder="••••••••",
+            placeholder="Minim 8 caractere, literă mare, cifră și caracter special",
         )
 
         confirm_password = st.text_input(
             "Confirmă parola",
             type="password",
-            placeholder="••••••••",
+            placeholder="Reintrodu parola",
         )
 
         submitted = st.form_submit_button(
-            "Creează cont",
-            use_container_width=True
+            "Creează cont client",
+            use_container_width=True,
         )
 
     if submitted:
+        full_name = full_name.strip()
+        username = username.strip()
+        email = email.strip().lower()
+
         if not full_name or not username or not email or not password or not confirm_password:
             st.error("Completează toate câmpurile.")
             return
@@ -89,15 +96,11 @@ def render_register_form():
             "password": password,
         }
 
-        if role == "client":
-            with st.spinner("Se creează contul de client..."):
-                result = register_client(payload)
-        else:
-            with st.spinner("Se creează contul de analist..."):
-                result = register_analyst(payload)
+        with st.spinner("Se creează contul de client..."):
+            result = register_client(payload)
 
         if result.get("success"):
-            st.success("Cont creat cu succes. Acum te poți autentifica.")
+            st.success("Cont client creat cu succes. Acum te poți autentifica.")
         else:
             st.error(result.get("message", "Înregistrarea a eșuat."))
 
