@@ -115,6 +115,94 @@ class FinancialStatement(models.Model):
     short_term_liabilities = models.DecimalField(max_digits=15, decimal_places=2)
     equity = models.DecimalField(max_digits=15, decimal_places=2)
     retained_earnings = models.DecimalField(max_digits=15, decimal_places=2)
+    short_term_securities = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Titluri financiare pe termen scurt"
+    )
+    receivables = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Creanțe"
+    )
+
+    gross_profit = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Profit brut"
+    )
+
+    extraordinary_items = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Elemente extraordinare"
+    )
+
+    financial_expenses = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Cheltuieli financiare"
+    )
+
+    interest = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Dobânzi"
+    )
+
+    share_capital = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Capital social"
+    )
+
+    profit_on_operating_activities = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Profit din activitatea operațională"
+    )
+    gross_profit_3_years = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Profit brut cumulat pe 3 ani"
+    )
+
+    cost_of_products_sold = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Costul produselor vândute"
+    )
+
+    profit_on_sales = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Profit din vânzări"
+    )
+
+    total_costs = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Costuri totale"
+    )
+
+    previous_period_sales = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        verbose_name="Vânzări perioada anterioară"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -214,7 +302,7 @@ class KPISnapshot(models.Model):
     x64 = models.FloatField(null=True, blank=True, verbose_name="X64 (Sales / fixed assets)")
     x65 = models.FloatField(null=True, blank=True, verbose_name="X65 (Retained earnings / total liabilities)")
     x66 = models.FloatField(null=True, blank=True,
-                            verbose_name="X66 (Net profit + Depr) / (Current Assets - Short Liab)")
+                            verbose_name="X66 (Gross profit + extraordinary items + financial expenses) / working capital")
 
     feature_importance_data = models.JSONField(
         null=True,
@@ -269,6 +357,14 @@ class ReportRequest(models.Model):
     )
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='report_requests')
+    base_report = models.ForeignKey(
+        'BaseReport',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='custom_requests',
+        verbose_name="Raport standard de referință"
+    )
     analyst = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

@@ -1,0 +1,1278 @@
+import streamlit as st
+from html import escape
+from datetime import datetime,date,timedelta
+
+from api import (
+    get_analyst_dashboard_stats,
+    get_companies,
+    get_analyst_uploads,
+    review_upload,
+    download_upload_file,
+    get_analyst_report_requests,
+    fulfill_report_request,
+    download_custom_report,
+    get_standard_reports,
+    download_standard_report,
+)
+
+from views.styles import load_analyst_styles
+
+
+def _status_label(status: str):
+    labels = {
+        "pending": "În așteptare",
+        "approved": "Aprobat",
+        "rejected": "Respins",
+    }
+    return labels.get(status, status)
+
+
+def _status_badge(status: str):
+    label = _status_label(status)
+
+    if status == "approved":
+        css_class = "status-badge-approved"
+    elif status == "rejected":
+        css_class = "status-badge-rejected"
+    else:
+        css_class = "status-badge-pending"
+
+    return f'<span class="status-badge {css_class}">{label}</span>'
+
+
+def _close_review_modal():
+    st.session_state.selected_review_upload = None
+
+
+def _clear_review_modal_on_filter_change():
+    st.session_state.selected_review_upload = None
+
+
+def _set_flash_message(message: str, message_type: str = "success"):
+    st.session_state.analyst_flash_message = message
+    st.session_state.analyst_flash_type = message_type
+
+
+def _show_flash_message():
+    message = st.session_state.pop("analyst_flash_message", None)
+    message_type = st.session_state.pop("analyst_flash_type", "success")
+
+    if not message:
+        return
+
+    if message_type == "success":
+        st.success(message)
+    elif message_type == "warning":
+        st.warning(message)
+    else:
+        st.error(message)
+
+
+def _render_analyst_header(title: str, subtitle: str):
+    st.markdown(
+        f"""
+        <div class="analyst-page-header">
+            <div>
+                <div class="analyst-page-title">{title}</div>
+                <div class="analyst-page-subtitle">{subtitle}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _analyst_stat_card(title: str, value, caption: str):
+    return f"""
+    <div class="analyst-stat-card">
+        <div class="analyst-stat-title">{title}</div>
+        <div class="analyst-stat-value">{value}</div>
+        <div class="analyst-stat-caption">{caption}</div>
+    </div>
+    """
+
+
+def _safe_company_value(company: dict, *keys, default="—"):
+    for key in keys:
+        value = company.get(key)
+        if value not in [None, ""]:
+            return escape(str(value))
+    return default
+
+
+def _render_companies_table(companies: list):
+    rows_html = ""
+
+    for company in companies:
+        name = _safe_company_value(company, "nume", "name")
+        cui = _safe_company_value(company, "cui")
+        industry = _safe_company_value(company, "industrie", "industry")
+        address = _safe_company_value(company, "adresa", "address")
+        email = _safe_company_value(company, "email", "email_contact")
+        phone = _safe_company_value(company, "telefon", "phone", "phone_number")
+        owner = _safe_company_value(company, "owner_username", "client_username", "owner")
+        onboarded = company.get("status_onboarded", company.get("is_onboarded", False))
+
+        if onboarded:
+            status_badge = '<span class="company-status-badge company-status-active">Activă</span>'
+        else:
+            status_badge = '<span class="company-status-badge company-status-pending">În configurare</span>'
+
+        rows_html += f"""
+        <div class="analyst-company-row">
+            <div>
+                <div class="analyst-company-main">{name}</div>
+                <div class="analyst-company-sub">Client: {owner}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{cui}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{industry}</div>
+                <div class="analyst-company-sub">{address}</div>
+            </div>
+
+            <div>
+                <div class="analyst-company-main">{email}</div>
+                <div class="analyst-company-sub">{phone}</div>
+            </div>
+
+            <div>
+                {status_badge}
+            </div>
+        </div>
+        """
+
+    table_html = f"""
+    <div class="analyst-company-table-card">
+        <div class="analyst-company-table-title">Lista firmelor asignate</div>
+        <div class="analyst-company-table-subtitle">
+            Firmele monitorizate de analist și principalele informații de identificare.
+        </div>
+
+        <div class="analyst-company-table">
+            <div class="analyst-company-header">
+                <div>Companie</div>
+                <div>CUI</div>
+                <div>Domeniu</div>
+                <div>Contact</div>
+                <div>Status</div>
+            </div>
+
+            {rows_html}
+        </div>
+    </div>
+    """
+
+    st.html(table_html)
+
+
+@st.dialog("Verificare import financiar", width="large")
+def render_review_import_modal(upload: dict):
+    upload_id = upload.get("id")
+
+    if upload.get("status") != "pending":
+        _close_review_modal()
+        _set_flash_message(
+            "Acest import a fost deja procesat și nu mai poate fi aprobat sau respins manual.",
+            "warning",
+        )
+        st.rerun()
+
+    st.markdown(
+        """
+        <div class="review-modal-header">
+            <div class="review-modal-icon">▤</div>
+            <div>
+                <div class="review-modal-title">Verificare import financiar</div>
+                <div class="review-modal-subtitle">
+                    Aprobă sau respinge fișierul încărcat de client.
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="review-modal-section-title">Detalii import</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="review-details-box">
+            <div class="review-detail-row">
+                <span>Companie</span>
+                <strong>{upload.get("company_name")}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>CUI</span>
+                <strong>{upload.get("cui")}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>Client</span>
+                <strong>{upload.get("client_username")}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>Fișier</span>
+                <strong>{upload.get("file_name")}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>Încărcat la</span>
+                <strong>{upload.get("uploaded_at")}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    download_result = download_upload_file(
+        upload_id=upload_id,
+        access_token=st.session_state.access_token,
+    )
+
+    if download_result.get("success"):
+        st.download_button(
+            label="Descarcă fișierul Excel",
+            data=download_result.get("content"),
+            file_name=upload.get("file_name") or f"import_{upload_id}.xlsx",
+            mime=download_result.get(
+                "content_type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            use_container_width=True,
+            key=f"download_upload_{upload_id}",
+        )
+    else:
+        st.warning(
+            download_result.get(
+                "message",
+                "Fișierul nu poate fi descărcat.",
+            )
+        )
+
+    st.markdown(
+        """
+        <div class="review-warning-box">
+            <div class="review-warning-title">Acțiune necesară</div>
+            <div class="review-warning-text">
+                Acest import este în așteptarea validării. Descarcă fișierul Excel,
+                verifică datele încărcate de client, apoi aprobă sau respinge importul.
+                Dacă îl aprobi, sistemul va procesa fișierul, va calcula indicatorii financiari
+                și va actualiza dashboard-ul clientului. Dacă îl respingi, clientul va vedea
+                motivul respingerii în istoricul importurilor.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    reason = st.text_area(
+        "Motiv respingere",
+        key=f"modal_reject_reason_{upload_id}",
+        placeholder="Completează motivul doar dacă vrei să respingi importul...",
+        height=110,
+    )
+
+    st.caption("Motivul este obligatoriu doar pentru respingerea importului.")
+
+    col_cancel, col_reject, col_approve = st.columns([1, 1, 1])
+
+    with col_cancel:
+        cancel_clicked = st.button(
+            "Anulează",
+            use_container_width=True,
+            key=f"cancel_modal_{upload_id}",
+        )
+
+    with col_reject:
+        reject_clicked = st.button(
+            "Respinge",
+            use_container_width=True,
+            key=f"modal_reject_{upload_id}",
+        )
+
+    with col_approve:
+        approve_clicked = st.button(
+            "Aprobă importul",
+            use_container_width=True,
+            key=f"modal_approve_{upload_id}",
+        )
+
+    if cancel_clicked:
+        _close_review_modal()
+        st.rerun()
+
+    if reject_clicked:
+        clean_reason = reason.strip()
+
+        if not clean_reason:
+            st.warning("Completează motivul respingerii.")
+            return
+
+        with st.spinner("Se respinge importul..."):
+            response = review_upload(
+                upload_id=upload_id,
+                decision="reject",
+                access_token=st.session_state.access_token,
+                reason=clean_reason,
+            )
+
+        if response.get("success"):
+            _close_review_modal()
+            _set_flash_message("Importul a fost respins cu succes.", "success")
+            st.rerun()
+
+        message = response.get("message", "Respingerea importului a eșuat.")
+        _close_review_modal()
+        _set_flash_message(
+            f"Importul nu mai poate fi respins manual. Detalii: {message}",
+            "error",
+        )
+        st.rerun()
+
+    if approve_clicked:
+        with st.spinner("Se procesează fișierul și se calculează KPI-urile..."):
+            response = review_upload(
+                upload_id=upload_id,
+                decision="approve",
+                access_token=st.session_state.access_token,
+            )
+
+        if response.get("success"):
+            _close_review_modal()
+            _set_flash_message(
+                "Importul a fost aprobat. KPI-urile au fost calculate și dashboard-ul clientului a fost actualizat.",
+                "success",
+            )
+            st.rerun()
+
+        message = response.get("message", "Aprobarea importului a eșuat.")
+        _close_review_modal()
+        _set_flash_message(
+            f"Procesarea importului a eșuat. Importul a fost respins automat. Detalii: {message}",
+            "error",
+        )
+        st.rerun()
+
+
+def render_upload_actions(upload: dict):
+    upload_id = upload.get("id")
+    status = upload.get("status")
+
+    if status == "pending":
+        st.markdown(
+            '<div class="analyst-action-button-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        if st.button(
+            "Acțiuni",
+            key=f"actions_{upload_id}",
+            use_container_width=True,
+        ):
+            st.session_state.selected_review_upload = upload
+            st.rerun()
+
+        return
+
+    if not upload_id:
+        st.markdown(
+            """
+            <div class="analyst-muted-action">
+                Fișier indisponibil
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    download_result = download_upload_file(
+        upload_id=upload_id,
+        access_token=st.session_state.access_token,
+    )
+
+    if download_result.get("success"):
+        st.download_button(
+            label="Descarcă",
+            data=download_result.get("content"),
+            file_name=upload.get("file_name") or f"import_{upload_id}.xlsx",
+            mime=download_result.get(
+                "content_type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            use_container_width=True,
+            key=f"analyst_download_upload_{upload_id}",
+        )
+    else:
+        st.markdown(
+            """
+            <div class="analyst-muted-action">
+                Fișier indisponibil
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_upload_row(upload: dict):
+    status = upload.get("status")
+
+    company_name = escape(str(upload.get("company_name") or "—"))
+    cui = escape(str(upload.get("cui") or "—"))
+    client_username = escape(str(upload.get("client_username") or "—"))
+    file_name = escape(str(upload.get("file_name") or "Fișier necunoscut"))
+    industry = escape(str(upload.get("industry") or "N/A"))
+    uploaded_at = escape(str(upload.get("uploaded_at") or "—"))
+    processed_at = escape(str(upload.get("processed_at") or "—"))
+
+    col_company, col_file, col_date, col_status, col_actions = st.columns(
+        [2.05, 2.05, 1.35, 0.95, 1.1],
+        vertical_alignment="center",
+    )
+
+    with col_company:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{company_name}</div>
+            <div class="analyst-import-sub">
+                CUI: {cui} · Client: {client_username}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_file:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{file_name}</div>
+            <div class="analyst-import-sub">
+                Domeniu: {industry}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_date:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{uploaded_at}</div>
+            <div class="analyst-import-sub">
+                Procesat: {processed_at}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_status:
+        st.markdown(
+            _status_badge(status),
+            unsafe_allow_html=True,
+        )
+
+    with col_actions:
+        render_upload_actions(upload)
+
+    st.markdown(
+        '<div class="analyst-import-row-divider"></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_analyst_imports_header(status_options: list):
+    with st.container():
+        st.markdown(
+            '<div class="analyst-import-card-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        top_left, top_right = st.columns([2.6, 1], vertical_alignment="bottom")
+
+        with top_left:
+            st.markdown(
+                """
+                <div class="analyst-import-table-top">
+                    <div class="analyst-import-table-title">Lista importurilor</div>
+                    <div class="analyst-import-table-subtitle">
+                        Importurile în așteptare necesită verificare finală din partea analistului.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with top_right:
+            selected_status_label = st.selectbox(
+                "Filtrează după status",
+                options=status_options,
+                index=(
+                    status_options.index(st.session_state.analyst_upload_status_filter)
+                    if st.session_state.analyst_upload_status_filter in status_options
+                    else 0
+                ),
+                key="analyst_upload_status_filter",
+                on_change=_clear_review_modal_on_filter_change,
+            )
+
+        st.markdown(
+            """
+            <div class="analyst-import-header">
+                <div>Companie</div>
+                <div>Fișier</div>
+                <div>Data încărcării</div>
+                <div>Status</div>
+                <div>Acțiuni</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    return selected_status_label
+
+def render_uploads_table(uploads: list):
+    if not uploads:
+        st.markdown(
+            """
+            <div class="analyst-import-empty-row">
+                Nu există importuri pentru filtrul selectat.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    for upload in uploads:
+        render_upload_row(upload)
+
+
+def render_analyst_imports_page():
+    load_analyst_styles()
+
+    _render_analyst_header(
+        "Importuri financiare",
+        "Verifică fișierele încărcate de clienți, descarcă documentele Excel și aprobă sau respinge importurile."
+    )
+
+    _show_flash_message()
+
+    status_map = {
+        "În așteptare": "pending",
+        "Aprobat": "approved",
+        "Respins": "rejected",
+        "Toate": "all",
+    }
+
+    status_options = list(status_map.keys())
+
+    if "analyst_upload_status_filter" not in st.session_state:
+        st.session_state.analyst_upload_status_filter = "În așteptare"
+
+    selected_status_label = render_analyst_imports_header(status_options)
+    selected_status = status_map[selected_status_label]
+
+    result = get_analyst_uploads(
+        access_token=st.session_state.access_token,
+        status=selected_status,
+    )
+
+    if not result.get("success"):
+        st.error(result.get("message", "Nu s-au putut încărca importurile."))
+        return
+
+    uploads = result.get("data", [])
+
+    render_uploads_table(uploads)
+
+    selected_upload = st.session_state.get("selected_review_upload")
+
+    if selected_upload and selected_upload.get("status") == "pending":
+        render_review_import_modal(selected_upload)
+    else:
+        st.session_state.selected_review_upload = None
+
+
+def render_analyst_portfolio_page():
+    load_analyst_styles()
+
+    _render_analyst_header(
+        "Portofoliu firme",
+        "Monitorizează firmele asignate, importurile active și situațiile care necesită atenție."
+    )
+
+    stats_result = get_analyst_dashboard_stats(st.session_state.access_token)
+
+    if stats_result.get("success"):
+        stats = stats_result.get("data", {})
+    else:
+        stats = {}
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.markdown(
+            _analyst_stat_card(
+                "Firme asignate",
+                stats.get("total_firme", 0),
+                "Portofoliu curent"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with c2:
+        st.markdown(
+            _analyst_stat_card(
+                "Importuri noi",
+                stats.get("importuri_noi", 0),
+                "În așteptare"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with c3:
+        st.markdown(
+            _analyst_stat_card(
+                "Cereri rapoarte",
+                stats.get("cereri_rapoarte_noi", 0),
+                "Solicitări client"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with c4:
+        st.markdown(
+            _analyst_stat_card(
+                "Firme risc ridicat",
+                stats.get("firme_risc_ridicat", 0),
+                "Monitorizare"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        """
+        <div class="analyst-hero analyst-hero-spaced">
+            <div class="analyst-hero-eyebrow">Portofoliu</div>
+            <div class="analyst-hero-title">Firme asignate analistului</div>
+            <div class="analyst-hero-text">
+                Această secțiune centralizează firmele aflate în responsabilitatea analistului.
+                Poți urmări rapid firmele active, domeniul de activitate și datele principale de contact.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    result = get_companies(st.session_state.access_token)
+
+    if not result.get("success"):
+        st.error(result.get("message", "Companiile nu au putut fi încărcate."))
+        return
+
+    companies = result.get("data", [])
+
+    if not companies:
+        st.markdown(
+            """
+            <div class="analyst-empty-card">
+                Nu există firme asignate acestui analist.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    _render_companies_table(companies)
+
+def _report_status_label(status: str):
+    labels = {
+        "pending": "În așteptare",
+        "in_progress": "În lucru",
+        "completed": "Finalizat",
+    }
+    return labels.get(status, status or "—")
+
+
+def _report_status_badge(status: str):
+    label = _report_status_label(status)
+
+    if status == "completed":
+        css_class = "status-badge-approved"
+    elif status == "in_progress":
+        css_class = "status-badge-progress"
+    else:
+        css_class = "status-badge-pending"
+
+    return f'<span class="status-badge {css_class}">{label}</span>'
+
+
+def _close_report_modal():
+    st.session_state.selected_report_request = None
+
+
+def _clear_report_modal_on_filter_change():
+    st.session_state.selected_report_request = None
+
+
+def _short_text(text: str, limit: int = 120):
+    text = str(text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+@st.dialog("Gestionare raport personalizat", width="large")
+def render_manage_report_request_modal(request_item: dict):
+    request_id = request_item.get("id")
+    company_id = request_item.get("company_id")
+    company_name = escape(str(request_item.get("company_name") or "—"))
+    cui = escape(str(request_item.get("cui") or "—"))
+    client_username = escape(str(request_item.get("client_username") or "—"))
+    created_at = escape(str(request_item.get("created_at") or "—"))
+    client_message = escape(str(request_item.get("client_message") or "—")).replace("\n", "<br>")
+
+    st.markdown(
+        f"""
+        <div class="review-modal-header">
+            <div class="review-modal-icon">▣</div>
+            <div>
+                <div class="review-modal-title">Gestionare raport personalizat</div>
+                <div class="review-modal-subtitle">
+                    Completează interpretarea și recomandările pentru client.
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="review-details-box">
+            <div class="review-detail-row">
+                <span>Companie</span>
+                <strong>{company_name}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>CUI</span>
+                <strong>{cui}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>Client</span>
+                <strong>{client_username}</strong>
+            </div>
+            <div class="review-detail-row">
+                <span>Data solicitării</span>
+                <strong>{created_at}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="analyst-report-client-request-box">
+            <div class="analyst-report-client-request-title">Cerința clientului</div>
+            <div class="analyst-report-client-request-text">{client_message}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="review-modal-section-title">Raport standard asociat</div>',
+        unsafe_allow_html=True,
+    )
+
+    standard_result = get_standard_reports(
+        company_id=company_id,
+        access_token=st.session_state.access_token,
+    )
+
+    if standard_result.get("success"):
+        standard_reports = standard_result.get("data", [])
+
+        if standard_reports:
+            latest_report = standard_reports[0]
+            report_id = latest_report.get("id")
+
+            download_result = download_standard_report(
+                report_id=report_id,
+                access_token=st.session_state.access_token,
+            )
+
+            if download_result.get("success"):
+                st.download_button(
+                    label="Descarcă raportul standard",
+                    data=download_result.get("content"),
+                    file_name=f"raport_standard_{report_id}.pdf",
+                    mime=download_result.get("content_type", "application/pdf"),
+                    use_container_width=True,
+                    key=f"analyst_modal_standard_report_{report_id}",
+                )
+            else:
+                st.warning(download_result.get("message", "Raportul standard nu poate fi descărcat."))
+        else:
+            st.info("Nu există rapoarte standard disponibile pentru această companie.")
+    else:
+        st.warning(standard_result.get("message", "Rapoartele standard nu au putut fi încărcate."))
+
+    st.markdown(
+        '<div class="review-modal-section-title">Completare raport personalizat</div>',
+        unsafe_allow_html=True,
+    )
+
+    analyst_message = st.text_area(
+        "Comentariu analist",
+        placeholder=(
+            "Exemplu: Pe baza indicatorilor calculați, firma prezintă o situație financiară "
+            "care necesită monitorizare pe zona de lichiditate și îndatorare..."
+        ),
+        height=120,
+        key=f"report_analyst_message_{request_id}",
+    )
+
+    recommendations = st.text_area(
+        "Recomandări personalizate",
+        placeholder=(
+            "Exemplu: Recomand monitorizarea strictă a datoriilor curente, creșterea capitalului "
+            "de lucru și îmbunătățirea rotației creanțelor..."
+        ),
+        height=150,
+        key=f"report_recommendations_{request_id}",
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        liquidity_note = st.text_input(
+            "Observație lichiditate",
+            placeholder="Ex: lichiditatea trebuie monitorizată lunar",
+            key=f"report_liquidity_{request_id}",
+        )
+
+        debt_note = st.text_input(
+            "Observație îndatorare",
+            placeholder="Ex: gradul de îndatorare necesită reducere graduală",
+            key=f"report_debt_{request_id}",
+        )
+
+    with col2:
+        profitability_note = st.text_input(
+            "Observație profitabilitate",
+            placeholder="Ex: marja de profit poate fi îmbunătățită",
+            key=f"report_profitability_{request_id}",
+        )
+
+        risk_note = st.text_input(
+            "Observație risc",
+            placeholder="Ex: riscul estimat impune monitorizare suplimentară",
+            key=f"report_risk_{request_id}",
+        )
+
+    col_cancel, col_submit = st.columns([1, 1])
+
+    with col_cancel:
+        if st.button("Anulează", use_container_width=True, key=f"cancel_report_{request_id}"):
+            _close_report_modal()
+            st.rerun()
+
+    with col_submit:
+        submit_clicked = st.button(
+            "Finalizează raportul",
+            use_container_width=True,
+            key=f"fulfill_report_{request_id}",
+        )
+
+    if submit_clicked:
+        if not analyst_message.strip():
+            st.warning("Completează comentariul analistului.")
+            return
+
+        if not recommendations.strip():
+            st.warning("Completează recomandările personalizate.")
+            return
+
+        extra_data = {
+            "Observație lichiditate": liquidity_note,
+            "Observație îndatorare": debt_note,
+            "Observație profitabilitate": profitability_note,
+            "Observație risc": risk_note,
+        }
+
+        with st.spinner("Se generează raportul personalizat..."):
+            result = fulfill_report_request(
+                request_id=request_id,
+                analyst_message=analyst_message,
+                recommendations=recommendations,
+                extra_data=extra_data,
+                access_token=st.session_state.access_token,
+            )
+
+        if result.get("success"):
+            _close_report_modal()
+            _set_flash_message("Raportul personalizat a fost generat și trimis clientului.", "success")
+            st.rerun()
+
+        st.error(result.get("message", "Raportul personalizat nu a putut fi finalizat."))
+
+
+def render_report_request_actions(request_item: dict):
+    status = request_item.get("status")
+    request_id = request_item.get("id")
+    custom_report_id = request_item.get("custom_report_id")
+
+    if status == "completed" and custom_report_id:
+        download_result = download_custom_report(
+            report_id=custom_report_id,
+            access_token=st.session_state.access_token,
+        )
+
+        if download_result.get("success"):
+            st.download_button(
+                label="Descarcă",
+                data=download_result.get("content"),
+                file_name=f"raport_personalizat_{custom_report_id}.pdf",
+                mime=download_result.get("content_type", "application/pdf"),
+                use_container_width=True,
+                key=f"analyst_download_custom_report_{custom_report_id}",
+            )
+        else:
+            st.markdown(
+                """
+                <div class="analyst-muted-action">
+                    Indisponibil
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        return
+
+    st.markdown(
+        '<div class="analyst-report-action-button-anchor"></div>',
+        unsafe_allow_html=True,
+    )
+
+    if st.button(
+        "Gestionează",
+        key=f"manage_report_request_{request_id}",
+        use_container_width=True,
+    ):
+        st.session_state.selected_report_request = request_item
+        st.rerun()
+
+
+def render_report_request_row(request_item: dict):
+    status = request_item.get("status")
+
+    company_name = escape(str(request_item.get("company_name") or "—"))
+    cui = escape(str(request_item.get("cui") or "—"))
+    client_username = escape(str(request_item.get("client_username") or "—"))
+    created_at = escape(str(request_item.get("created_at") or "—"))
+    message = escape(_short_text(request_item.get("client_message"), 115))
+
+    col_company, col_request, col_date, col_status, col_actions = st.columns(
+        [2.05, 2.05, 1.25, 0.95, 1.1],
+        vertical_alignment="center",
+    )
+
+    with col_company:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{company_name}</div>
+            <div class="analyst-import-sub">
+                CUI: {cui} · Client: {client_username}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_request:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">Raport personalizat</div>
+            <div class="analyst-import-sub">{message}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_date:
+        st.markdown(
+            f"""
+            <div class="analyst-import-main">{created_at}</div>
+            <div class="analyst-import-sub">Data cererii</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col_status:
+        st.markdown(
+            _report_status_badge(status),
+            unsafe_allow_html=True,
+        )
+
+    with col_actions:
+        render_report_request_actions(request_item)
+
+    st.markdown(
+        '<div class="analyst-import-row-divider"></div>',
+        unsafe_allow_html=True,
+    )
+
+def _parse_ro_date_for_reports(value):
+    if not value:
+        return None
+
+    text = str(value).strip()
+
+    formats = [
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _is_report_request_in_period(value, selected_period: str):
+    parsed_date = _parse_ro_date_for_reports(value)
+
+    if selected_period == "Toate":
+        return True
+
+    if parsed_date is None:
+        return False
+
+    today = date.today()
+
+    if selected_period == "Ultimele 30 zile":
+        return parsed_date >= today - timedelta(days=30)
+
+    if selected_period == "Ultimele 3 luni":
+        return parsed_date >= today - timedelta(days=90)
+
+    if selected_period == "Ultimele 6 luni":
+        return parsed_date >= today - timedelta(days=180)
+
+    if selected_period == "Ultimele 12 luni":
+        return parsed_date >= today - timedelta(days=365)
+
+    if selected_period == "Anul curent":
+        return parsed_date.year == today.year
+
+    return True
+
+
+def _filter_report_requests_by_period(requests_list: list, selected_period: str):
+    return [
+        request_item for request_item in requests_list
+        if _is_report_request_in_period(request_item.get("created_at"), selected_period)
+    ]
+
+def render_analyst_reports_table_card(
+    status_options: list,
+    period_options: list,
+    requests_list: list,
+):
+    with st.container():
+        st.markdown(
+            '<div class="analyst-report-card-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+        top_left, status_col, period_col = st.columns(
+            [2.2, 1, 1],
+            vertical_alignment="bottom",
+        )
+
+        with top_left:
+            st.markdown(
+                """
+                <div class="analyst-import-table-top">
+                    <div class="analyst-import-table-title">Solicitări rapoarte personalizate</div>
+                    <div class="analyst-import-table-subtitle">
+                        Gestionează cererile transmise de clienți și finalizează rapoartele personalizate.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with status_col:
+            st.selectbox(
+                "Filtrează după status",
+                options=status_options,
+                index=(
+                    status_options.index(st.session_state.analyst_report_status_filter)
+                    if st.session_state.analyst_report_status_filter in status_options
+                    else 0
+                ),
+                key="analyst_report_status_filter",
+                on_change=_clear_report_modal_on_filter_change,
+            )
+
+        with period_col:
+            st.selectbox(
+                "Filtrează după perioadă",
+                options=period_options,
+                index=(
+                    period_options.index(st.session_state.analyst_report_period_filter)
+                    if st.session_state.analyst_report_period_filter in period_options
+                    else 0
+                ),
+                key="analyst_report_period_filter",
+                on_change=_clear_report_modal_on_filter_change,
+            )
+
+        st.markdown(
+            """
+            <div class="analyst-report-header">
+                <div>Companie</div>
+                <div>Solicitare</div>
+                <div>Data cererii</div>
+                <div>Status</div>
+                <div>Acțiuni</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        render_report_requests_table(requests_list)
+
+
+def render_report_requests_table(requests_list: list):
+    if not requests_list:
+        st.markdown(
+            """
+            <div class="analyst-import-empty-row">
+                Nu există solicitări de rapoarte pentru filtrul selectat.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    for request_item in requests_list:
+        render_report_request_row(request_item)
+
+def render_analyst_reports_page():
+    load_analyst_styles()
+
+    _render_analyst_header(
+        "Rapoarte",
+        "Gestionează solicitările de rapoarte personalizate și transmite recomandări către clienți."
+    )
+
+    _show_flash_message()
+
+    status_map = {
+        "În așteptare": "pending",
+        "În lucru": "in_progress",
+        "Finalizat": "completed",
+        "Toate": "all",
+    }
+
+    status_options = list(status_map.keys())
+
+    period_options = [
+        "Toate",
+        "Ultimele 30 zile",
+        "Ultimele 3 luni",
+        "Ultimele 6 luni",
+        "Ultimele 12 luni",
+        "Anul curent",
+    ]
+
+    if "analyst_report_status_filter" not in st.session_state:
+        st.session_state.analyst_report_status_filter = "În așteptare"
+
+    if "analyst_report_period_filter" not in st.session_state:
+        st.session_state.analyst_report_period_filter = "Toate"
+
+    selected_status_label = st.session_state.analyst_report_status_filter
+    selected_period_label = st.session_state.analyst_report_period_filter
+
+    selected_status = status_map.get(selected_status_label, "pending")
+
+    result = get_analyst_report_requests(
+        access_token=st.session_state.access_token,
+        status=selected_status,
+    )
+
+    if not result.get("success"):
+        st.error(result.get("message", "Solicitările de rapoarte nu au putut fi încărcate."))
+        return
+
+    requests_list = result.get("data", [])
+
+    requests_list = _filter_report_requests_by_period(
+        requests_list,
+        selected_period_label,
+    )
+
+    pending_count = len(
+        [item for item in requests_list if item.get("status") == "pending"]
+    )
+
+    completed_count = len(
+        [item for item in requests_list if item.get("status") == "completed"]
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown(
+            _analyst_stat_card(
+                "Solicitări afișate",
+                len(requests_list),
+                "Conform filtrelor selectate"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with c2:
+        st.markdown(
+            _analyst_stat_card(
+                "În așteptare",
+                pending_count,
+                "Necesită completare"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with c3:
+        st.markdown(
+            _analyst_stat_card(
+                "Finalizate",
+                completed_count,
+                "Rapoarte trimise clientului"
+            ),
+            unsafe_allow_html=True,
+        )
+
+    render_analyst_reports_table_card(
+        status_options=status_options,
+        period_options=period_options,
+        requests_list=requests_list,
+    )
+
+    selected_request = st.session_state.get("selected_report_request")
+
+    if selected_request and selected_request.get("status") != "completed":
+        render_manage_report_request_modal(selected_request)
+    else:
+        st.session_state.selected_report_request = None
+
+def render_analyst_dashboard():
+    render_analyst_portfolio_page()

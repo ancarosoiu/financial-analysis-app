@@ -1,136 +1,625 @@
 import pandas as pd
 import numpy as np
+
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count
+from django.core.files.base import ContentFile
+from xml.sax.saxutils import escape as xml_escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from .ml_service import predict_risk
 from .models import FinancialUpload, FinancialStatement, KPISnapshot, BaseReport
 
+FRIENDLY_COLUMN_NAMES = {
+    "reporting_date": "Data raportării",
+    "net_profit": "Profit net",
+    "ebit": "EBIT",
+    "sales_revenue": "Venituri din vânzări",
+    "depreciation": "Amortizare",
+    "operating_expenses": "Cheltuieli operaționale",
+    "total_assets": "Active totale",
+    "current_assets": "Active curente",
+    "inventory": "Stocuri",
+    "cash": "Numerar",
+    "total_liabilities": "Datorii totale",
+    "short_term_liabilities": "Datorii pe termen scurt",
+    "equity": "Capitaluri proprii",
+    "retained_earnings": "Profit reportat",
+    "short_term_securities": "Titluri pe termen scurt",
+    "receivables": "Creanțe",
+    "gross_profit": "Profit brut",
+    "extraordinary_items": "Elemente extraordinare",
+    "financial_expenses": "Cheltuieli financiare",
+    "interest": "Dobânzi",
+    "share_capital": "Capital social",
+    "profit_on_operating_activities": "Profit din activitatea operațională",
+    "gross_profit_3_years": "Profit brut cumulat pe 3 ani",
+    "cost_of_products_sold": "Costul produselor vândute",
+    "profit_on_sales": "Profit din vânzări",
+    "total_costs": "Costuri totale",
+    "previous_period_sales": "Vânzările perioadei anterioare",
+}
+
+def format_friendly_list(columns):
+    return "\n".join(
+        [f"- {FRIENDLY_COLUMN_NAMES.get(col, col)}" for col in columns]
+    )
 
 def validate_and_parse_financial_excel(file_path, is_onboarding=True):
+    required_columns = [
+        'reporting_date',
+        'net_profit',
+        'ebit',
+        'sales_revenue',
+        'depreciation',
+        'operating_expenses',
+        'total_assets',
+        'current_assets',
+        'inventory',
+        'cash',
+        'total_liabilities',
+        'short_term_liabilities',
+        'equity',
+        'retained_earnings',
+        'short_term_securities',
+        'receivables',
+        'gross_profit',
+        'extraordinary_items',
+        'financial_expenses',
+        'interest',
+        'share_capital',
+        'profit_on_operating_activities',
+        'gross_profit_3_years',
+        'cost_of_products_sold',
+        'profit_on_sales',
+        'total_costs',
+        'previous_period_sales',
+    ]
+
     try:
         df = pd.read_excel(file_path)
-        df.columns = [col.strip().lower() for col in df.columns]
 
-        required_columns = [
-            'reporting_date',
-            'net_profit',
-            'ebit',
-            'sales_revenue',
-            'depreciation',
-            'operating_expenses',
-            'total_assets',
-            'current_assets',
-            'inventory',
-            'cash',
-            'total_liabilities',
-            'short_term_liabilities',
-            'equity',
-            'retained_earnings'
+        df.columns = [str(col).strip().lower() for col in df.columns]
+
+        missing_columns = [
+            col for col in required_columns
+            if col not in df.columns
         ]
 
-        missing = [col for col in required_columns if col not in df.columns]
-        if missing:
-            raise ValidationError(f"Fisier incomplet: Lipsesc: {', '.join(missing)}")
+        if missing_columns:
+            friendly_missing = format_friendly_list(missing_columns)
+            raise ValidationError(
+                "Fișierul încărcat nu conține toate coloanele financiare obligatorii.\n\n"
+                "Lipsesc următoarele coloane:\n"
+                f"{friendly_missing}\n\n"
+                "Te rugăm să revizuiești fișierul și să reîncerci încărcarea "
+                "folosind un fișier Excel cu date financiare valide."
+            )
 
-        if is_onboarding and len(df)<12:
-            raise ValidationError(f"Onboarding esuat: Avem nevoie de 12 luni, dar fisierul are {len(df)}.")
+        if is_onboarding and len(df) < 12:
+            raise ValidationError(
+                f"Onboarding eșuat. Sunt necesare minimum 12 perioade financiare, "
+                f"dar fișierul conține doar {len(df)}."
+            )
 
-        df['reporting_date'] = pd.to_datetime(df['reporting_date']).dt.date
+        df['reporting_date'] = pd.to_datetime(
+            df['reporting_date'],
+            errors='coerce'
+        )
 
-        df = df.sort_values(by=['reporting_date'])
+        if df['reporting_date'].isna().any():
+            raise ValidationError(
+                "Coloana «Data raportării» conține valori invalide. "
+                "Te rugăm să verifici formatul datelor calendaristice."
+            )
+
+        df['reporting_date'] = df['reporting_date'].dt.date
+
+        if df['reporting_date'].duplicated().any():
+            raise ValidationError(
+                "Fișierul conține perioade financiare duplicate. "
+                "Fiecare lună/perioadă trebuie să apară o singură dată."
+            )
+
+        numeric_columns = [
+            col for col in required_columns
+            if col != 'reporting_date'
+        ]
+
+        for col in numeric_columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        invalid_numeric_columns = [
+            col for col in numeric_columns
+            if df[col].isna().any()
+        ]
+
+        if invalid_numeric_columns:
+            friendly_invalid = format_friendly_list(invalid_numeric_columns)
+            raise ValidationError(
+                "Fișierul conține valori lipsă sau invalide în unele coloane financiare.\n\n"
+                "Verifică următoarele câmpuri:\n"
+                f"{friendly_invalid}\n\n"
+                "Te rugăm să corectezi valorile și să reîncerci încărcarea fișierului."
+            )
+
+        if (df['total_assets'] <= 0).any():
+            raise ValidationError(
+                "Activele totale trebuie să fie mai mari decât zero."
+            )
+
+        if (df['sales_revenue'] <= 0).any():
+            raise ValidationError(
+                "Veniturile din vânzări trebuie să fie mai mari decât zero."
+            )
+
+        if (df['previous_period_sales'] <= 0).any():
+            raise ValidationError(
+                "Vânzările perioadei anterioare trebuie să fie mai mari decât zero."
+            )
+
+        if (df['current_assets'] > df['total_assets']).any():
+            raise ValidationError(
+                "Activele curente nu pot depăși activele totale."
+            )
+
+        if (df['inventory'] > df['current_assets']).any():
+            raise ValidationError(
+                "Stocurile nu pot depăși activele curente."
+            )
+
+        if (df['short_term_liabilities'] > df['total_liabilities']).any():
+            raise ValidationError(
+                "Datoriile pe termen scurt nu pot depăși datoriile totale."
+            )
+
+        df = df.sort_values(by='reporting_date').reset_index(drop=True)
+
         return df
 
+    except ValidationError:
+        raise
+
     except Exception as e:
-        raise ValidationError(f"Eroare critică la citirea fișierului: {str(e)}")
+        raise ValidationError(
+            f"Eroare critică la citirea fișierului: {str(e)}"
+        )
 
 def calculate_kpis(df):
     d = df.copy()
 
-    d['temp_month'] = pd.to_datetime(d['reporting_date']).dt.month
-    flux_columns = ['net_profit', 'ebit', 'sales_revenue', 'depreciation', 'operating_expenses']
-    for col in flux_columns:
-        d[col] = d[col] * (12 / d['temp_month'])
+    def safe_divide(numerator, denominator):
+        safe_denominator = denominator.replace(0, np.nan)
+        return numerator / safe_denominator
 
-    working_capital = d['current_assets'] - d['short_term_liabilities']
-    fixed_assets = d['total_assets'] - d['current_assets']
-    cost_of_goods_sold = d['sales_revenue'] - d['net_profit']
+    working_capital = (
+        d['current_assets']
+        - d['short_term_liabilities']
+    )
 
-    d['x1'] = d['net_profit'] / d['total_assets']
-    d['x2'] = d['total_liabilities'] / d['total_assets']
-    d['x3'] = working_capital / d['total_assets']
-    d['x4'] = d['current_assets'] / d['short_term_liabilities']
-    d['x5'] = ((d['cash'] + d['current_assets'] - d['inventory'] - d['short_term_liabilities']) /
-               (d['operating_expenses'] - d['depreciation'].replace(0, 0.001))) * 365
-    d['x6'] = d['retained_earnings'] / d['total_assets']
-    d['x7'] = d['ebit'] / d['total_assets']
-    d['x8'] = d['equity'] / d['total_liabilities']
-    d['x9'] = d['sales_revenue'] / d['total_assets']
-    d['x10'] = d['equity'] / d['total_assets']
+    fixed_assets = (
+        d['total_assets']
+        - d['current_assets']
+    )
 
-    d['x11'] = (d['net_profit'] + d['depreciation']) / d['total_liabilities']
-    d['x12'] = d['net_profit'] / d['short_term_liabilities']
-    d['x13'] = (d['net_profit'] + d['depreciation']) / d['sales_revenue']
-    d['x14'] = (d['net_profit'] + d['ebit']) / d['total_assets']
-    d['x15'] = (d['total_liabilities'] * 365) / (d['net_profit'] + d['depreciation'])
-    d['x16'] = (d['net_profit'] + d['depreciation']) / d['total_liabilities']
-    d['x17'] = d['total_assets'] / d['total_liabilities']
-    d['x18'] = d['net_profit'] / d['total_assets']
-    d['x19'] = d['net_profit'] / d['sales_revenue']
-    d['x20'] = (d['inventory'] * 365) / d['sales_revenue']
+    long_term_liabilities = (
+        d['total_liabilities']
+        - d['short_term_liabilities']
+    )
 
-    d['x21'] = d['sales_revenue'] / d['sales_revenue'].shift(1)
-    d['x22'] = d['ebit'] / d['total_assets']
-    d['x23'] = d['net_profit'] / d['sales_revenue']
-    d['x24'] = d['net_profit'] / d['total_assets']
-    d['x25'] = (d['equity'] - d['retained_earnings']) / d['total_assets']
-    d['x26'] = (d['net_profit'] + d['depreciation']) / d['total_liabilities']
-    d['x27'] = d['ebit'] / d['operating_expenses']
-    d['x28'] = working_capital / fixed_assets
-    d['x29'] = np.log10(d['total_assets'].astype(float))
-    d['x30'] = (d['total_liabilities'] - d['cash']) / d['sales_revenue']
+    constant_capital = (
+        d['equity']
+        + long_term_liabilities
+    )
 
-    d['x31'] = (d['net_profit'] + d['ebit']) / d['sales_revenue']
-    d['x32'] = (d['short_term_liabilities'] * 365) / cost_of_goods_sold
-    d['x33'] = d['short_term_liabilities'] / d['total_liabilities']
-    d['x34'] = d['operating_expenses'] / d['total_liabilities']
-    d['x35'] = d['ebit'] / d['total_assets']
-    d['x36'] = d['sales_revenue'] / d['total_assets']
-    d['x37'] = (d['current_assets'] - d['inventory']) / (d['total_liabilities'] - d['short_term_liabilities'])
-    d['x38'] = (d['equity'] + d['total_liabilities'] - d['short_term_liabilities']) / d['total_assets']
-    d['x39'] = d['net_profit'] / d['sales_revenue']
-    d['x40'] = (d['current_assets'] - d['inventory'] - d['cash']) / d['short_term_liabilities']
+    operating_cash_flow = (
+        d['net_profit']
+        + d['depreciation']
+    )
 
-    d['x41'] = d['total_liabilities'] / ((d['ebit'] + d['depreciation']) * (12 / 365))
-    d['x42'] = d['ebit'] / d['sales_revenue']
-    d['x43'] = (d['current_assets'] * 365) / d['sales_revenue']
-    d['x44'] = (d['net_profit'] + d['depreciation']) / d['total_liabilities']
-    d['x45'] = d['net_profit'] / d['inventory']
-    d['x46'] = (d['current_assets'] - d['inventory']) / d['short_term_liabilities']
-    d['x47'] = (d['inventory'] * 365) / cost_of_goods_sold
-    d['x48'] = (d['ebit'] - d['depreciation']) / d['total_assets']
-    d['x49'] = (d['ebit'] - d['depreciation']) / d['sales_revenue']
-    d['x50'] = d['current_assets'] / d['total_liabilities']
+    ebitda_uci = (
+        d['profit_on_operating_activities']
+        - d['depreciation']
+    )
 
-    d['x51'] = d['short_term_liabilities'] / d['total_assets']
-    d['x52'] = (d['short_term_liabilities'] * 365) / cost_of_goods_sold
-    d['x53'] = d['equity'] / fixed_assets
-    d['x54'] = (d['equity'] + d['total_liabilities'] - d['short_term_liabilities']) / fixed_assets
+    d['x1'] = safe_divide(
+        d['net_profit'],
+        d['total_assets']
+    )
+
+    d['x2'] = safe_divide(
+        d['total_liabilities'],
+        d['total_assets']
+    )
+
+    d['x3'] = safe_divide(
+        working_capital,
+        d['total_assets']
+    )
+
+    d['x4'] = safe_divide(
+        d['current_assets'],
+        d['short_term_liabilities']
+    )
+
+    d['x5'] = safe_divide(
+        (
+            d['cash']
+            + d['short_term_securities']
+            + d['receivables']
+            - d['short_term_liabilities']
+        ),
+        (
+            d['operating_expenses']
+            - d['depreciation']
+        )
+    ) * 365
+
+    d['x6'] = safe_divide(
+        d['retained_earnings'],
+        d['total_assets']
+    )
+
+    d['x7'] = safe_divide(
+        d['ebit'],
+        d['total_assets']
+    )
+
+    d['x8'] = safe_divide(
+        d['equity'],
+        d['total_liabilities']
+    )
+
+    d['x9'] = safe_divide(
+        d['sales_revenue'],
+        d['total_assets']
+    )
+
+    d['x10'] = safe_divide(
+        d['equity'],
+        d['total_assets']
+    )
+
+    d['x11'] = safe_divide(
+        (
+            d['gross_profit']
+            + d['extraordinary_items']
+            + d['financial_expenses']
+        ),
+        d['total_assets']
+    )
+
+    d['x12'] = safe_divide(
+        d['gross_profit'],
+        d['short_term_liabilities']
+    )
+
+    d['x13'] = safe_divide(
+        (
+            d['gross_profit']
+            + d['depreciation']
+        ),
+        d['sales_revenue']
+    )
+
+    d['x14'] = safe_divide(
+        (
+            d['gross_profit']
+            + d['interest']
+        ),
+        d['total_assets']
+    )
+
+    d['x15'] = safe_divide(
+        d['total_liabilities'] * 365,
+        (
+            d['gross_profit']
+            + d['depreciation']
+        )
+    )
+
+    d['x16'] = safe_divide(
+        (
+            d['gross_profit']
+            + d['depreciation']
+        ),
+        d['total_liabilities']
+    )
+
+    d['x17'] = safe_divide(
+        d['total_assets'],
+        d['total_liabilities']
+    )
+
+    d['x18'] = safe_divide(
+        d['gross_profit'],
+        d['total_assets']
+    )
+
+    d['x19'] = safe_divide(
+        d['gross_profit'],
+        d['sales_revenue']
+    )
+
+    d['x20'] = safe_divide(
+        d['inventory'] * 365,
+        d['sales_revenue']
+    )
+
+    d['x21'] = safe_divide(
+        d['sales_revenue'],
+        d['previous_period_sales']
+    )
+
+    d['x22'] = safe_divide(
+        d['profit_on_operating_activities'],
+        d['total_assets']
+    )
+
+    d['x23'] = safe_divide(
+        d['net_profit'],
+        d['sales_revenue']
+    )
+
+    d['x24'] = safe_divide(
+        d['gross_profit_3_years'],
+        d['total_assets']
+    )
+
+    d['x25'] = safe_divide(
+        (
+            d['equity']
+            - d['share_capital']
+        ),
+        d['total_assets']
+    )
+
+    d['x26'] = safe_divide(
+        operating_cash_flow,
+        d['total_liabilities']
+    )
+
+    d['x27'] = safe_divide(
+        d['profit_on_operating_activities'],
+        d['financial_expenses']
+    )
+
+    d['x28'] = safe_divide(
+        working_capital,
+        fixed_assets
+    )
+
+    d['x29'] = np.log10(
+        d['total_assets'].astype(float)
+    )
+
+    d['x30'] = safe_divide(
+        (
+            d['total_liabilities']
+            - d['cash']
+        ),
+        d['sales_revenue']
+    )
+
+    d['x31'] = safe_divide(
+        (
+            d['gross_profit']
+            + d['interest']
+        ),
+        d['sales_revenue']
+    )
+
+    d['x32'] = safe_divide(
+        d['short_term_liabilities'] * 365,
+        d['cost_of_products_sold']
+    )
+
+    d['x33'] = safe_divide(
+        d['operating_expenses'],
+        d['short_term_liabilities']
+    )
+
+    d['x34'] = safe_divide(
+        d['operating_expenses'],
+        d['total_liabilities']
+    )
+
+    d['x35'] = safe_divide(
+        d['profit_on_sales'],
+        d['total_assets']
+    )
+
+    d['x36'] = safe_divide(
+        d['sales_revenue'],
+        d['total_assets']
+    )
+
+    d['x37'] = safe_divide(
+        (
+            d['current_assets']
+            - d['inventory']
+        ),
+        long_term_liabilities
+    )
+
+    d['x38'] = safe_divide(
+        constant_capital,
+        d['total_assets']
+    )
+
+    d['x39'] = safe_divide(
+        d['profit_on_sales'],
+        d['sales_revenue']
+    )
+
+    d['x40'] = safe_divide(
+        (
+            d['current_assets']
+            - d['inventory']
+            - d['receivables']
+        ),
+        d['short_term_liabilities']
+    )
+
+    d['x41'] = safe_divide(
+        d['total_liabilities'],
+        (
+            (
+                d['profit_on_operating_activities']
+                + d['depreciation']
+            )
+            * (12 / 365)
+        )
+    )
+
+    d['x42'] = safe_divide(
+        d['profit_on_operating_activities'],
+        d['sales_revenue']
+    )
+
+    d['x43'] = (
+        safe_divide(
+            d['receivables'] * 365,
+            d['sales_revenue']
+        )
+        + safe_divide(
+            d['inventory'] * 365,
+            d['cost_of_products_sold']
+        )
+    )
+
+    d['x44'] = safe_divide(
+        d['receivables'] * 365,
+        d['sales_revenue']
+    )
+
+    d['x45'] = safe_divide(
+        d['net_profit'],
+        d['inventory']
+    )
+
+    d['x46'] = safe_divide(
+        (
+            d['current_assets']
+            - d['inventory']
+        ),
+        d['short_term_liabilities']
+    )
+
+    d['x47'] = safe_divide(
+        d['inventory'] * 365,
+        d['cost_of_products_sold']
+    )
+
+    d['x48'] = safe_divide(
+        ebitda_uci,
+        d['total_assets']
+    )
+
+    d['x49'] = safe_divide(
+        ebitda_uci,
+        d['sales_revenue']
+    )
+
+    d['x50'] = safe_divide(
+        d['current_assets'],
+        d['total_liabilities']
+    )
+
+    d['x51'] = safe_divide(
+        d['short_term_liabilities'],
+        d['total_assets']
+    )
+
+    d['x52'] = safe_divide(
+        d['short_term_liabilities'] * 365,
+        d['cost_of_products_sold']
+    )
+
+    d['x53'] = safe_divide(
+        d['equity'],
+        fixed_assets
+    )
+
+    d['x54'] = safe_divide(
+        constant_capital,
+        fixed_assets
+    )
+
     d['x55'] = working_capital
-    d['x56'] = (d['sales_revenue'] - cost_of_goods_sold) / d['sales_revenue']
-    d['x57'] = (d['current_assets'] - d['inventory'] - d['short_term_liabilities']) / (
-                d['sales_revenue'] - d['net_profit'] - d['depreciation'])
-    d['x58'] = d['operating_expenses'] / d['sales_revenue']
-    d['x59'] = (d['total_liabilities'] - d['short_term_liabilities']) / d['equity']
-    d['x60'] = d['sales_revenue'] / d['inventory']
 
-    d['x61'] = d['sales_revenue'] / d['current_assets']
-    d['x62'] = (d['short_term_liabilities'] * 365) / d['sales_revenue']
-    d['x63'] = d['sales_revenue'] / d['short_term_liabilities']
-    d['x64'] = d['sales_revenue'] / fixed_assets
+    d['x56'] = safe_divide(
+        (
+            d['sales_revenue']
+            - d['cost_of_products_sold']
+        ),
+        d['sales_revenue']
+    )
+
+    d['x57'] = safe_divide(
+        (
+            d['current_assets']
+            - d['inventory']
+            - d['short_term_liabilities']
+        ),
+        (
+            d['sales_revenue']
+            - d['gross_profit']
+            - d['depreciation']
+        )
+    )
+
+    d['x58'] = safe_divide(
+        d['total_costs'],
+        d['sales_revenue']
+    )
+
+    d['x59'] = safe_divide(
+        long_term_liabilities,
+        d['equity']
+    )
+
+    d['x60'] = safe_divide(
+        d['sales_revenue'],
+        d['inventory']
+    )
+
+    d['x61'] = safe_divide(
+        d['sales_revenue'],
+        d['receivables']
+    )
+
+    d['x62'] = safe_divide(
+        d['short_term_liabilities'] * 365,
+        d['sales_revenue']
+    )
+
+    d['x63'] = safe_divide(
+        d['sales_revenue'],
+        d['short_term_liabilities']
+    )
+
+    d['x64'] = safe_divide(
+        d['sales_revenue'],
+        fixed_assets
+    )
+
     d['x65'] = d['x6'] / d['x2'].replace(0, 0.001)
     d['x66'] = d['x11'] / d['x3'].replace(0, 0.001)
 
@@ -138,6 +627,41 @@ def calculate_kpis(df):
     d = d.fillna(0)
 
     return d
+
+def validate_upload_before_analyst(upload_instance):
+    onboarding_needed = not upload_instance.company.is_onboarded
+
+    df_raw = validate_and_parse_financial_excel(
+        upload_instance.file.path,
+        is_onboarding=onboarding_needed
+    )
+
+    existing_months = {
+        pd.Period(date, freq='M')
+        for date in FinancialStatement.objects.filter(company=upload_instance.company)
+        .values_list("reporting_date", flat=True)
+    }
+
+    uploaded_months = {
+        pd.Period(date, freq='M')
+        for date in df_raw["reporting_date"].tolist()
+    }
+
+    duplicate_months = existing_months.intersection(uploaded_months)
+
+    if duplicate_months:
+        duplicate_months_str = ", ".join(
+            [str(month) for month in sorted(duplicate_months)]
+        )
+
+        raise ValidationError(
+            f"Fișierul conține luni deja existente în sistem: {duplicate_months_str}. "
+            "Încarcă doar luni financiare noi."
+        )
+
+    calculate_kpis(df_raw)
+
+    return True
 
 User = get_user_model()
 def auto_assign_analyst(company):
@@ -153,16 +677,38 @@ def auto_assign_analyst(company):
         return True
     return False
 
-#doar in cazul in care toate lunile sunt valide salveaza in bd
 def save_calculated_data(company, upload_instance, df_final):
     if upload_instance.status == 'approved':
-        raise ValidationError('Acest fisier deja a fost procesat')
+        raise ValidationError('Acest fișier a fost deja procesat.')
+
+    existing_months = {
+        pd.Period(date, freq='M')
+        for date in FinancialStatement.objects.filter(company=company)
+        .values_list("reporting_date", flat=True)
+    }
+
+    uploaded_months = {
+        pd.Period(date, freq='M')
+        for date in df_final["reporting_date"].tolist()
+    }
+
+    duplicate_months = existing_months.intersection(uploaded_months)
+
+    if duplicate_months:
+        duplicate_months_str = ", ".join(
+            [str(month) for month in sorted(duplicate_months)]
+        )
+
+        raise ValidationError(
+            f"Fișierul conține luni deja existente în sistem: {duplicate_months_str}. "
+            "Încarcă doar luni financiare noi."
+        )
 
     with transaction.atomic():
         for _, row in df_final.iterrows():
             statement = FinancialStatement.objects.create(
                 company=company,
-                source_upload=upload_instance,  # Folosim instanța primită ca argument
+                source_upload=upload_instance,
                 reporting_date=row['reporting_date'],
                 net_profit=row['net_profit'],
                 ebit=row['ebit'],
@@ -176,24 +722,42 @@ def save_calculated_data(company, upload_instance, df_final):
                 total_liabilities=row['total_liabilities'],
                 short_term_liabilities=row['short_term_liabilities'],
                 equity=row['equity'],
-                retained_earnings=row['retained_earnings']
+                retained_earnings=row['retained_earnings'],
+                short_term_securities=row['short_term_securities'],
+                receivables=row['receivables'],
+                gross_profit=row['gross_profit'],
+                extraordinary_items=row['extraordinary_items'],
+                financial_expenses=row['financial_expenses'],
+                interest=row['interest'],
+                share_capital=row['share_capital'],
+                profit_on_operating_activities=row['profit_on_operating_activities'],
+                gross_profit_3_years=row['gross_profit_3_years'],
+                cost_of_products_sold=row['cost_of_products_sold'],
+                profit_on_sales=row['profit_on_sales'],
+                total_costs=row['total_costs'],
+                previous_period_sales=row['previous_period_sales'],
             )
 
-            kpi_data = {f'x{i}': row.get(f'x{i}', 0) for i in range(1, 67)}
+            kpi_data = {
+                f'x{i}': float(row.get(f'x{i}', 0))
+                for i in range(1, 67)
+            }
 
-            label, probability, importance = predict_risk(kpi_data)
+            label, probability, shap_explanation = predict_risk(kpi_data)
 
             snapshot = KPISnapshot.objects.create(
                 statement=statement,
                 prediction_label=label,
                 bankruptcy_probability=probability,
-                feature_importance_data = importance,
+                feature_importance_data=shap_explanation,
                 **kpi_data
             )
+
             BaseReport.objects.create(snapshot=snapshot)
 
         upload_instance.status = 'approved'
         upload_instance.processed_at = timezone.now()
+        upload_instance.rejection_reason = None
         upload_instance.save()
 
         company.is_onboarded = True
@@ -205,30 +769,543 @@ def save_calculated_data(company, upload_instance, df_final):
 def process_financial_upload(upload_instance):
     try:
         onboarding_needed = not upload_instance.company.is_onboarded
+
+        print("=" * 80)
+        print(f"DEBUG PROCESS UPLOAD ID: {upload_instance.id}")
+        print(f"DEBUG COMPANY: {upload_instance.company.name}")
+        print(f"DEBUG ONBOARDING NEEDED: {onboarding_needed}")
+        print(f"DEBUG FILE PATH: {upload_instance.file.path}")
+        print("=" * 80)
+
         df_raw = validate_and_parse_financial_excel(
             upload_instance.file.path,
             is_onboarding=onboarding_needed
         )
 
+        print("DEBUG PAS 1 OK: fișier validat și citit.")
+        print(f"DEBUG ROWS: {len(df_raw)}")
+        print(f"DEBUG COLUMNS: {list(df_raw.columns)}")
+
         df_kpi = calculate_kpis(df_raw)
 
-        save_calculated_data(upload_instance.company, upload_instance, df_kpi)
+        print("DEBUG PAS 2 OK: KPI calculați.")
+        print(f"DEBUG KPI COLUMNS EXIST: {[f'x{i}' for i in range(1, 67) if f'x{i}' in df_kpi.columns]}")
 
-        return True, "Procesare reusita!"
+        save_calculated_data(
+            upload_instance.company,
+            upload_instance,
+            df_kpi
+        )
+
+        print("DEBUG PAS 3 OK: date salvate, predicții generate, import aprobat.")
+        print("=" * 80)
+
+        return True, "Procesare reușită."
 
     except ValidationError as e:
-        upload_instance.status = 'rejected'
-        upload_instance.rejection_reason = str(e)
+        if hasattr(e, "messages") and e.messages:
+            error_message = e.messages[0]
+        else:
+            error_message = str(e)
+
+        upload_instance.status = "rejected"
+        upload_instance.rejection_reason = error_message
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
-        return False, str(e)
+
+        print("=" * 80)
+        print("DEBUG VALIDATION ERROR ÎN PROCESS_FINANCIAL_UPLOAD:")
+        print(error_message)
+        print("=" * 80)
+
+        return False, error_message
 
     except Exception as e:
-        upload_instance.status = 'rejected'
-        upload_instance.rejection_reason = f"Eroare sistem: {str(e)}"
+        error_message = str(e)
+
+        upload_instance.status = "rejected"
+        upload_instance.rejection_reason = f"Eroare sistem: {error_message}"
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
-        print(f"DEBUG EROARE REALA: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False, "A intervenit o eroare tehnica neprevazuta"
+
+        return False, error_message
+
+def _pdf_text(value):
+    """
+    Normalizeaza textul pentru PDF.
+    Folosim varianta fara diacritice ca sa evitam patratelele generate de fonturile standard ReportLab.
+    """
+
+    if value is None:
+        return ""
+
+    text = str(value)
+
+    replacements = {
+        "ă": "a", "Ă": "A",
+        "â": "a", "Â": "A",
+        "î": "i", "Î": "I",
+        "ș": "s", "Ș": "S",
+        "ş": "s", "Ş": "S",
+        "ț": "t", "Ț": "T",
+        "ţ": "t", "Ţ": "T",
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    return text
+
+
+def _pdf_paragraph(value):
+    text = _pdf_text(value)
+    text = xml_escape(text)
+    text = text.replace("\n", "<br/>")
+    return text
+
+
+def _fmt_report_value(value, suffix=""):
+    if value is None:
+        return "N/A"
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return _pdf_text(value)
+
+    if suffix == "%":
+        return f"{value:.2f}%"
+
+    return f"{value:,.2f}"
+
+
+def _fmt_report_money(value):
+    return f"{_fmt_report_value(value)} RON"
+
+
+def _risk_interpretation(probability):
+    try:
+        probability = float(probability or 0)
+    except (TypeError, ValueError):
+        probability = 0
+
+    if probability < 30:
+        return (
+            "Risc scazut",
+            "Compania prezinta o probabilitate redusa de dificultate financiara conform modelului predictiv."
+        )
+
+    if probability < 60:
+        return (
+            "Risc mediu",
+            "Compania necesita monitorizare atenta, deoarece exista semnale financiare care pot indica vulnerabilitati."
+        )
+
+    return (
+        "Risc ridicat",
+        "Compania prezinta semnale financiare importante, care necesita analiza suplimentara si masuri de corectie."
+    )
+
+
+def _build_pdf_document(title):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2 * cm,
+        leftMargin=2 * cm,
+        topMargin=1.7 * cm,
+        bottomMargin=1.7 * cm,
+        title=_pdf_text(title),
+    )
+
+    styles = getSampleStyleSheet()
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportTitle",
+            parent=styles["Title"],
+            fontName="Helvetica-Bold",
+            fontSize=17,
+            leading=22,
+            textColor=colors.black,
+            alignment=1,
+            spaceAfter=8,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSubtitle",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=9,
+            leading=13,
+            textColor=colors.HexColor("#333333"),
+            alignment=1,
+            spaceAfter=16,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSection",
+            parent=styles["Heading2"],
+            fontName="Helvetica-Bold",
+            fontSize=11,
+            leading=14,
+            textColor=colors.black,
+            spaceBefore=12,
+            spaceAfter=7,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportBody",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=9,
+            leading=13,
+            textColor=colors.black,
+            spaceAfter=7,
+        )
+    )
+
+    styles.add(
+        ParagraphStyle(
+            name="ReportSmall",
+            parent=styles["BodyText"],
+            fontName="Helvetica",
+            fontSize=8,
+            leading=11,
+            textColor=colors.HexColor("#333333"),
+            spaceAfter=5,
+        )
+    )
+
+    return buffer, doc, styles
+
+
+def _mono_table(rows, col_widths=None):
+    if col_widths is None:
+        col_widths = [7.5 * cm, 7.5 * cm]
+
+    safe_rows = []
+
+    for row in rows:
+        safe_rows.append([
+            Paragraph(_pdf_paragraph(cell), getSampleStyleSheet()["BodyText"])
+            for cell in row
+        ])
+
+    table = Table(safe_rows, colWidths=col_widths, hAlign="LEFT")
+
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eeeeee")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#777777")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+
+    return table
+
+
+def _metadata_table(rows):
+    return _mono_table(
+        rows,
+        col_widths=[5.0 * cm, 10.0 * cm],
+    )
+
+
+def generate_standard_report_pdf(base_report):
+    """
+    Genereaza raportul standard in format PDF.
+    Template-ul este alb-negru, sobru si fara diacritice, pentru compatibilitate sigura cu ReportLab.
+    PDF-ul se regenereaza la download ca sa foloseasca mereu template-ul curent.
+    """
+
+    if base_report.pdf_file:
+        base_report.pdf_file.delete(save=False)
+
+    snapshot = base_report.snapshot
+    statement = snapshot.statement
+    company = statement.company
+
+    buffer, doc, styles = _build_pdf_document("Raport financiar standard")
+
+    risk_label, risk_text = _risk_interpretation(snapshot.bankruptcy_probability)
+
+    prediction_label = snapshot.prediction_label or risk_label
+
+    elements = []
+
+    elements.append(Paragraph("RAPORT FINANCIAR STANDARD", styles["ReportTitle"]))
+
+    elements.append(
+        Paragraph(
+            "Document generat automat pe baza datelor financiare validate, "
+            "a indicatorilor calculati si a rezultatului modelului predictiv.",
+            styles["ReportSubtitle"],
+        )
+    )
+
+    elements.append(Paragraph("1. Date generale", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Companie", company.name],
+                ["CUI", company.cui],
+                ["Perioada analizata", statement.reporting_date.strftime("%d/%m/%Y")],
+                ["Data generarii", timezone.now().strftime("%d/%m/%Y %H:%M")],
+                ["Tip raport", "Raport standard generat automat"],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("2. Sinteza financiara", styles["ReportSection"]))
+
+    elements.append(
+        _mono_table(
+            [
+                ["Indicator", "Valoare"],
+                ["Venituri din vanzari", _fmt_report_money(statement.sales_revenue)],
+                ["Profit net", _fmt_report_money(statement.net_profit)],
+                ["EBIT", _fmt_report_money(statement.ebit)],
+                ["Active totale", _fmt_report_money(statement.total_assets)],
+                ["Datorii totale", _fmt_report_money(statement.total_liabilities)],
+                ["Capitaluri proprii", _fmt_report_money(statement.equity)],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("3. Indicatori financiari calculati", styles["ReportSection"]))
+
+    elements.append(
+        _mono_table(
+            [
+                ["Indicator", "Valoare"],
+                ["Rentabilitate active", _fmt_report_value(snapshot.x1)],
+                ["Grad de indatorare", _fmt_report_value(snapshot.x2)],
+                ["Capital de lucru / active", _fmt_report_value(snapshot.x3)],
+                ["Lichiditate curenta", _fmt_report_value(snapshot.x4)],
+                ["EBIT / active", _fmt_report_value(snapshot.x7)],
+                ["Solvabilitate", _fmt_report_value(snapshot.x10)],
+                ["Marja profitului net", _fmt_report_value(snapshot.x23)],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("4. Rezultat model predictiv", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Incadrare risc", prediction_label],
+                ["Probabilitate estimata", _fmt_report_value(snapshot.bankruptcy_probability, "%")],
+                ["Interpretare", risk_text],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("5. Factori explicativi", styles["ReportSection"]))
+
+    shap_data = snapshot.feature_importance_data or {}
+    top_factors = shap_data.get("top_factors", []) if isinstance(shap_data, dict) else []
+
+    if top_factors:
+        factor_rows = [["Indicator", "Impact", "Valoare indicator"]]
+
+        for factor in top_factors[:8]:
+            indicator = str(factor.get("indicator", "")).upper()
+            shap_value = _fmt_report_value(factor.get("shap_value"))
+            feature_value = _fmt_report_value(factor.get("feature_value"))
+            factor_rows.append([indicator, shap_value, feature_value])
+
+        elements.append(
+            _mono_table(
+                factor_rows,
+                col_widths=[4.0 * cm, 5.0 * cm, 6.0 * cm],
+            )
+        )
+    else:
+        elements.append(
+            Paragraph(
+                "Pentru aceasta perioada nu exista factori explicativi disponibili.",
+                styles["ReportBody"],
+            )
+        )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("6. Observatie metodologica", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            "Raportul standard are rol informativ si reprezinta un instrument de sprijin "
+            "pentru analiza financiara. Rezultatul modelului predictiv nu trebuie interpretat "
+            "ca decizie financiara definitiva, ci ca semnal analitic bazat pe datele disponibile.",
+            styles["ReportBody"],
+        )
+    )
+
+    doc.build(elements)
+
+    file_name = f"raport_standard_{company.id}_{statement.reporting_date}.pdf"
+
+    base_report.pdf_file.save(
+        file_name,
+        ContentFile(buffer.getvalue()),
+        save=True,
+    )
+
+    buffer.close()
+
+    return base_report
+
+
+def generate_custom_report_pdf(custom_report):
+    if custom_report.pdf_file:
+        custom_report.pdf_file.delete(save=False)
+
+    report_request = custom_report.request
+    company = report_request.company
+    analyst = report_request.analyst
+
+    buffer, doc, styles = _build_pdf_document("Raport financiar personalizat")
+
+    elements = []
+
+    elements.append(Paragraph("RAPORT FINANCIAR PERSONALIZAT", styles["ReportTitle"]))
+
+    elements.append(
+        Paragraph(
+            "Document intocmit pe baza solicitarii clientului si a interpretarii analistului financiar.",
+            styles["ReportSubtitle"],
+        )
+    )
+
+    elements.append(Paragraph("1. Date generale", styles["ReportSection"]))
+
+    elements.append(
+        _metadata_table(
+            [
+                ["Camp", "Valoare"],
+                ["Companie", company.name],
+                ["CUI", company.cui],
+                ["Analist", analyst.username if analyst else "N/A"],
+                ["Data solicitarii", report_request.created_at.strftime("%d/%m/%Y %H:%M")],
+                ["Data generarii", timezone.now().strftime("%d/%m/%Y %H:%M")],
+                ["Tip raport", "Raport personalizat"],
+            ]
+        )
+    )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("2. Solicitarea clientului", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(report_request.client_message),
+            styles["ReportBody"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph("3. Observatii analist", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(custom_report.analyst_message or "Nu a fost completat un comentariu."),
+            styles["ReportBody"],
+        )
+    )
+
+    elements.append(Spacer(1, 8))
+
+    elements.append(Paragraph("4. Recomandari personalizate", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            _pdf_paragraph(custom_report.expert_recommendations or "Nu au fost completate recomandari."),
+            styles["ReportBody"],
+        )
+    )
+
+    extra_data = custom_report.extra_data_json or {}
+
+    if isinstance(extra_data, dict) and extra_data:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("5. Detalii suplimentare", styles["ReportSection"]))
+
+        rows = [["Categorie", "Observatie"]]
+
+        for key, value in extra_data.items():
+            if value:
+                rows.append([key, value])
+
+        if len(rows) > 1:
+            elements.append(
+                _mono_table(
+                    rows,
+                    col_widths=[5.5 * cm, 9.5 * cm],
+                )
+            )
+        else:
+            elements.append(
+                Paragraph(
+                    "Nu au fost completate detalii suplimentare.",
+                    styles["ReportBody"],
+                )
+            )
+
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("6. Observatie finala", styles["ReportSection"]))
+
+    elements.append(
+        Paragraph(
+            "Raportul personalizat completeaza raportul standard generat automat si include "
+            "interpretari formulate de analistul financiar in functie de cerinta transmisa de client.",
+            styles["ReportBody"],
+        )
+    )
+
+    doc.build(elements)
+
+    file_name = f"raport_personalizat_cerere_{report_request.id}.pdf"
+
+    custom_report.pdf_file.save(
+        file_name,
+        ContentFile(buffer.getvalue()),
+        save=True,
+    )
+
+    buffer.close()
+
+    return custom_report
