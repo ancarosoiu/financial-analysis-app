@@ -1,5 +1,6 @@
 import streamlit as st
 
+from textwrap import dedent
 from session import init_session, logout
 from views.auth import render_auth_page
 from views.client import (
@@ -21,12 +22,19 @@ st.set_page_config(
     page_title="Financial Insight",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 init_session()
 load_global_styles()
 
+def go_to_page(page_name: str):
+    st.session_state.page = page_name
+
+    st.session_state.selected_review_upload = None
+    st.session_state.selected_report_request = None
+
+    st.rerun()
 
 def render_sidebar():
     with st.sidebar:
@@ -64,35 +72,28 @@ def render_sidebar():
             st.write("---")
 
             if st.button("Dashboard KPI", use_container_width=True):
-                st.session_state.page = "client_dashboard"
-                st.rerun()
+                go_to_page("client_dashboard")
 
-            if st.button("Predicție ML / Risc", use_container_width=True):
-                st.session_state.page = "client_risk"
-                st.rerun()
+            if st.button("Predicție Risc", use_container_width=True):
+                go_to_page("client_risk")
 
             if st.button("Importuri", use_container_width=True):
-                st.session_state.page = "client_imports"
-                st.rerun()
+                go_to_page("client_imports")
 
             if st.button("Rapoarte", use_container_width=True):
-                st.session_state.page = "client_reports"
-                st.rerun()
+                go_to_page("client_reports")
 
         elif st.session_state.role == "analyst":
             st.write("---")
 
             if st.button("Portofoliu firme", use_container_width=True):
-                st.session_state.page = "analyst_portfolio"
-                st.rerun()
+                go_to_page("analyst_portfolio")
 
             if st.button("Importuri", use_container_width=True):
-                st.session_state.page = "analyst_imports"
-                st.rerun()
+                go_to_page("analyst_imports")
 
             if st.button("Rapoarte", use_container_width=True):
-                st.session_state.page = "analyst_reports"
-                st.rerun()
+                go_to_page("analyst_reports")
 
         st.write("---")
 
@@ -100,12 +101,56 @@ def render_sidebar():
             logout()
             st.rerun()
 
+def render_mobile_menu():
+    if not st.session_state.authenticated:
+        return
+
+    st.markdown('<div class="mobile-menu-safe-anchor"></div>', unsafe_allow_html=True)
+
+    with st.expander("Financial Insight", expanded=False):
+        if st.session_state.role == "client":
+            is_client_onboarding = (
+                not st.session_state.get("is_onboarded", False)
+                or st.session_state.get("page") == "client_onboarding"
+            )
+
+            if is_client_onboarding:
+                st.info("Finalizează onboarding-ul pentru a accesa paginile aplicației.")
+            else:
+                if st.button("Dashboard KPI", key="mobile_client_dashboard", use_container_width=True):
+                    go_to_page("client_dashboard")
+
+                if st.button("Predicție Risc", key="mobile_client_risk", use_container_width=True):
+                    go_to_page("client_risk")
+
+                if st.button("Importuri", key="mobile_client_imports", use_container_width=True):
+                    go_to_page("client_imports")
+
+                if st.button("Rapoarte", key="mobile_client_reports", use_container_width=True):
+                    go_to_page("client_reports")
+
+        elif st.session_state.role == "analyst":
+            if st.button("Portofoliu firme", key="mobile_analyst_portfolio", use_container_width=True):
+                go_to_page("analyst_portfolio")
+
+            if st.button("Importuri", key="mobile_analyst_imports", use_container_width=True):
+                go_to_page("analyst_imports")
+
+            if st.button("Rapoarte", key="mobile_analyst_reports", use_container_width=True):
+                go_to_page("analyst_reports")
+
+        st.divider()
+
+        if st.button("Logout", key="mobile_logout", use_container_width=True):
+            logout()
+            st.rerun()
 
 if not st.session_state.authenticated:
     render_auth_page()
 
 else:
     render_sidebar()
+    render_mobile_menu()
 
     if st.session_state.role == "client":
         if st.session_state.page == "client_onboarding":

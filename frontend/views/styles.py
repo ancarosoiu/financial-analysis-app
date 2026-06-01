@@ -27,37 +27,32 @@ def load_global_styles():
         }
 
         .block-container {
-            max-width: 1180px;
-            padding-top: 6rem;
-            padding-bottom: 2rem;
+            max-width: 1180px !important;
+            padding-top: 1.6rem !important;
+            padding-bottom: 2rem !important;
         }
 
         .divider-space {
             height: 18px;
         }
 
-        /* =========================
-           SIDEBAR
+                /* =========================
+           SIDEBAR + MOBILE MENU
         ========================= */
+
         section[data-testid="stSidebar"] {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            min-width: 310px !important;
-            width: 310px !important;
-            max-width: 310px !important;
             background: #0f172a !important;
-            transform: translateX(0px) !important;
             z-index: 999999 !important;
         }
-        
+
         section[data-testid="stSidebar"] > div {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
             background: #0f172a !important;
         }
-        
+
+        section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 0.65rem !important;
+        }
+
         /* Brand card sidebar */
         .sidebar-brand-card {
             display: flex;
@@ -74,7 +69,7 @@ def load_global_styles():
                 0 14px 32px rgba(2, 6, 23, 0.32),
                 0 0 28px rgba(37, 99, 235, 0.08);
         }
-        
+
         .sidebar-brand-icon {
             width: 42px;
             height: 42px;
@@ -90,7 +85,7 @@ def load_global_styles():
             letter-spacing: -0.03em;
             flex-shrink: 0;
         }
-        
+
         .sidebar-brand-title {
             color: #f8fafc !important;
             font-size: 1.05rem;
@@ -98,56 +93,217 @@ def load_global_styles():
             letter-spacing: -0.035em;
             line-height: 1.15;
         }
-        
+
         .sidebar-brand-subtitle {
             color: #8fa3c4 !important;
             font-size: 0.76rem;
             font-weight: 650;
             margin-top: 3px;
         }
-        
-        section[data-testid="stSidebar"] * {
-            color: white !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+
+        /* Meniul custom mobil este ascuns pe desktop */
+        .mobile-menu-layer {
+            display: none;
         }
-        
-        section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-            gap: 0.65rem !important;
+
+        /* =========================
+           DESKTOP / LAPTOP
+           Sidebar fix, fără collapse
+        ========================= */
+        @media (min-width: 901px) {
+            section[data-testid="stSidebar"] {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                min-width: 310px !important;
+                width: 310px !important;
+                max-width: 310px !important;
+                background: #0f172a !important;
+                transform: translateX(0px) !important;
+                left: 0 !important;
+            }
+
+            section[data-testid="stSidebar"] > div {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                background: #0f172a !important;
+            }
+
+            section[data-testid="stSidebar"] * {
+                color: white !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+
+            section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                min-height: 0 !important;
+                max-height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+            }
+
+            section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button,
+            button[aria-label="Close sidebar"],
+            button[aria-label="Open sidebar"],
+            button[title="Close sidebar"],
+            button[title="Open sidebar"],
+            [data-testid="stSidebarCollapseButton"],
+            [data-testid="stSidebarCollapsedControl"],
+            [data-testid="collapsedControl"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
         }
-        
-        /* Ascunde butonul nativ Streamlit de închidere/sidebar collapse */
-        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+
+                /* =========================
+           MOBILE SAFE NAVIGATION
+           Varianta stabilă cu st.expander
+        ========================= */
+
+        .mobile-menu-safe-anchor {
+            display: none;
+        }
+
+        /* Pe desktop ascundem meniul mobil */
+        div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div {
             display: none !important;
-            visibility: hidden !important;
-            height: 0 !important;
-            min-height: 0 !important;
-            max-height: 0 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            overflow: hidden !important;
+        }
+
+        @media (max-width: 900px) {
+            /* Ascundem sidebarul nativ Streamlit pe mobil */
+            section[data-testid="stSidebar"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+                transform: translateX(-120%) !important;
+                pointer-events: none !important;
+            }
+
+            section[data-testid="stSidebar"] * {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
+            [data-testid="stHeader"] {
+                height: 0 !important;
+                min-height: 0 !important;
+                max-height: 0 !important;
+                background: transparent !important;
+            }
+
+            button[aria-label="Open sidebar"],
+            button[aria-label="Close sidebar"],
+            button[title="Open sidebar"],
+            button[title="Close sidebar"],
+            [data-testid="stSidebarCollapsedControl"],
+            [data-testid="collapsedControl"],
+            [data-testid="stSidebarCollapseButton"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+
+            .mobile-menu-safe-anchor {
+                display: block !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div {
+                display: block !important;
+                margin-bottom: 1rem !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div details {
+                background:
+                    radial-gradient(circle at top right, rgba(37, 99, 235, 0.15), transparent 36%),
+                    linear-gradient(180deg, #10233c 0%, #0b1b31 100%) !important;
+                border: 1px solid rgba(96, 165, 250, 0.28) !important;
+                border-radius: 16px !important;
+                box-shadow:
+                    0 14px 34px rgba(2, 6, 23, 0.35),
+                    0 0 26px rgba(37, 99, 235, 0.10) !important;
+                overflow: hidden !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div summary {
+                color: #f8fafc !important;
+                font-size: 0.98rem !important;
+                font-weight: 900 !important;
+                padding: 0.9rem 1rem !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div summary * {
+                color: #f8fafc !important;
+                font-weight: 900 !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div [data-testid="stExpanderDetails"] {
+                background: rgba(7, 17, 31, 0.30) !important;
+                padding: 0.9rem 1rem 1rem 1rem !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div .stButton > button {
+                height: 42px !important;
+                border-radius: 12px !important;
+                background: #2563eb !important;
+                color: #f8fafc !important;
+                border: 1px solid rgba(147, 197, 253, 0.28) !important;
+                font-size: 0.86rem !important;
+                font-weight: 850 !important;
+                box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18) !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div .stButton > button:hover {
+                background: #1d4ed8 !important;
+                color: #ffffff !important;
+                transform: none !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div [data-testid="stCaptionContainer"],
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div [data-testid="stCaptionContainer"] * {
+                color: #93c5fd !important;
+                font-weight: 700 !important;
+            }
+
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div [data-testid="stAlert"],
+            div[data-testid="stVerticalBlock"] > div:has(.mobile-menu-safe-anchor) + div [data-testid="stAlert"] * {
+                color: #cbd5e1 !important;
+            }
+
+            .block-container {
+                max-width: 100% !important;
+                padding-top: 1.2rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                padding-bottom: 2rem !important;
+            }
+
+            .client-dash-title,
+            .analyst-page-title {
+                font-size: 2rem !important;
+                line-height: 1.1 !important;
+                letter-spacing: -0.04em !important;
+            }
+
+            .client-dash-subtitle,
+            .analyst-page-subtitle {
+                font-size: 0.92rem !important;
+                line-height: 1.45 !important;
+            }
         }
         
-        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        
-        /* fallback pentru variante diferite de Streamlit */
-        button[aria-label="Close sidebar"],
-        button[aria-label="Open sidebar"],
-        button[title="Close sidebar"],
-        button[title="Open sidebar"],
-        [data-testid="stSidebarCollapseButton"],
-        [data-testid="stSidebarCollapsedControl"],
-        [data-testid="collapsedControl"] {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
         /* =========================
            AUTH
         ========================= */
@@ -155,7 +311,7 @@ def load_global_styles():
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 3.2rem;
+            margin-top: 6.2rem;
             margin-bottom: 24px;
         }
 
@@ -213,7 +369,7 @@ def load_global_styles():
             border-radius: 12px;
             padding: 1.25rem;
             max-width: 430px;
-            margin: 0 auto;
+            margin: 6.2rem auto 0 auto;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
         }
 
@@ -2521,12 +2677,16 @@ def load_global_styles():
         ========================= */
         @media (max-width: 900px) {
             .block-container {
-                padding-top: 2rem;
+                padding-top: 1.2rem !important;
             }
 
             .auth-brand-row {
                 justify-content: center;
                 margin-top: 0;
+            }
+            
+            .stTabs {
+                margin-top: 1.4rem !important;
             }
 
             .auth-brand-title,
@@ -2594,7 +2754,7 @@ def load_analyst_styles():
 
         .block-container {
             max-width: 1320px !important;
-            padding-top: 2.2rem !important;
+            padding-top: 1.5rem !important;
             padding-bottom: 2.5rem !important;
         }
 
@@ -3180,24 +3340,262 @@ def load_analyst_styles():
             color: #ffffff !important;
         }
 
-        /* =========================
-           RESPONSIVE
+                /* =========================
+           ANALYST RESPONSIVE
         ========================= */
         @media (max-width: 950px) {
+            .block-container {
+                max-width: 100% !important;
+                padding-top: 1.2rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                padding-bottom: 2rem !important;
+            }
+
             .analyst-page-header {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                margin-bottom: 1rem !important;
             }
 
+            .analyst-page-title {
+                font-size: 1.85rem !important;
+                line-height: 1.1 !important;
+                letter-spacing: -0.04em !important;
+            }
+
+            .analyst-page-subtitle {
+                font-size: 0.88rem !important;
+                line-height: 1.5 !important;
+            }
+
+            /* Coloanele Streamlit devin verticale pe mobil */
+            div[data-testid="column"] {
+                width: 100% !important;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                flex: 1 1 100% !important;
+            }
+
+            div[data-testid="stHorizontalBlock"] {
+                gap: 0.85rem !important;
+            }
+
+            /* Carduri statistici */
+            .analyst-stat-card {
+                height: auto !important;
+                min-height: 128px !important;
+                max-height: none !important;
+                padding: 18px 20px !important;
+                margin-bottom: 0.85rem !important;
+                box-sizing: border-box !important;
+            }
+
+            .analyst-stat-title {
+                font-size: 0.82rem !important;
+                margin-bottom: 10px !important;
+            }
+
+            .analyst-stat-value {
+                font-size: 1.75rem !important;
+                margin-bottom: 8px !important;
+            }
+
+            .analyst-stat-caption {
+                font-size: 0.8rem !important;
+                line-height: 1.35 !important;
+            }
+
+            /* Hero analist */
+            .analyst-hero {
+                padding: 20px 22px !important;
+                border-radius: 20px !important;
+                margin-top: 1rem !important;
+                margin-bottom: 1rem !important;
+            }
+
+            .analyst-hero-title {
+                font-size: 1.35rem !important;
+                line-height: 1.2 !important;
+            }
+
+            .analyst-hero-text {
+                font-size: 0.86rem !important;
+                line-height: 1.5 !important;
+            }
+
+            /* Header-ele tabelare se ascund pe mobil */
             .analyst-import-header,
-            .analyst-company-header {
-                display: none;
+            .analyst-company-header,
+            .analyst-report-header {
+                display: none !important;
             }
 
-            .analyst-import-row,
+            /* Cardurile mari de importuri/rapoarte/firme */
+            div[data-testid="stVerticalBlock"]:has(.analyst-import-card-anchor),
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor),
+            .analyst-company-table-card {
+                padding: 18px 18px 16px 18px !important;
+                margin-top: 1rem !important;
+                margin-bottom: 1rem !important;
+                border-radius: 20px !important;
+                overflow: visible !important;
+                box-sizing: border-box !important;
+            }
+
+            .analyst-import-table-title,
+            .analyst-company-table-title {
+                font-size: 1.08rem !important;
+                line-height: 1.25 !important;
+            }
+
+            .analyst-import-table-subtitle,
+            .analyst-company-table-subtitle {
+                font-size: 0.82rem !important;
+                line-height: 1.45 !important;
+            }
+
+            /* Selectbox-urile de filtrare pe mobil */
+            div[data-testid="stSelectbox"] {
+                width: 100% !important;
+            }
+
+            div[data-testid="stSelectbox"] label {
+                font-size: 0.78rem !important;
+                line-height: 1.25 !important;
+            }
+
+            div[data-testid="stSelectbox"] [data-baseweb="select"] {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+
+            /* Rândurile de firme devin carduri verticale */
             .analyst-company-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+                padding: 16px 0 !important;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.15) !important;
+            }
+
+            .analyst-company-row > div {
+                min-width: 0 !important;
+            }
+
+            /* Texte sigure pe mobil */
+            .analyst-main-text,
+            .analyst-company-main,
+            .analyst-import-main {
+                font-size: 0.88rem !important;
+                line-height: 1.35 !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            .analyst-sub-text,
+            .analyst-company-sub,
+            .analyst-import-sub {
+                font-size: 0.78rem !important;
+                line-height: 1.35 !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            /* Status badge */
+            .status-badge,
+            .company-status-badge {
+                max-width: 100% !important;
+                white-space: normal !important;
+                text-align: center !important;
+                line-height: 1.25 !important;
+                padding: 7px 11px !important;
+                font-size: 0.74rem !important;
+            }
+
+            .analyst-muted-action {
+                text-align: left !important;
+                font-size: 0.8rem !important;
+                white-space: normal !important;
+            }
+
+            /* Butoane acțiuni / download */
+            div[data-testid="stDownloadButton"] button,
+            div[data-testid="stVerticalBlock"] > div:has(.analyst-action-button-anchor) + div div[data-testid="stButton"] button,
+            div[data-testid="stVerticalBlock"] > div:has(.analyst-report-action-button-anchor) + div div[data-testid="stButton"] button {
+                width: 100% !important;
+                min-height: 40px !important;
+                border-radius: 14px !important;
+                font-size: 0.78rem !important;
+                white-space: normal !important;
+            }
+
+            /* Importuri / rapoarte: separatoare mai curate */
+            .analyst-import-row-divider {
+                margin: 14px 0 !important;
+                border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+            }
+
+            /* Extra pentru pagina Rapoarte analist */
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor) {
+                margin-top: 1rem !important;
+            }
+
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor) .analyst-import-table-top {
+                margin-bottom: 0.75rem !important;
+            }
+
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor) .analyst-import-table-title {
+                font-size: 1.08rem !important;
+                line-height: 1.25 !important;
+                word-break: break-word !important;
+            }
+
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-card-anchor) .analyst-import-table-subtitle {
+                font-size: 0.82rem !important;
+                line-height: 1.45 !important;
+            }
+
+            /* Dacă există rânduri de raport, să nu iasă acțiunile din ecran */
+            div[data-testid="stVerticalBlock"]:has(.analyst-report-action-button-anchor) {
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+
+            /* Modaluri analist pe mobil */
+            .review-modal-header {
+                gap: 12px !important;
+                align-items: flex-start !important;
+            }
+
+            .review-modal-title {
+                font-size: 1.1rem !important;
+                line-height: 1.25 !important;
+            }
+
+            .review-modal-subtitle {
+                font-size: 0.82rem !important;
+                line-height: 1.4 !important;
+            }
+
+            .review-details-box,
+            .review-warning-box,
+            .analyst-report-client-request-box {
+                padding: 14px 15px !important;
+                border-radius: 16px !important;
+            }
+
+            .review-detail-row {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 4px !important;
+                align-items: flex-start !important;
+            }
+
+            .review-detail-row span,
+            .review-detail-row strong {
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
             }
         }
         </style>

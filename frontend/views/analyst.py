@@ -1080,7 +1080,11 @@ def _filter_report_requests_by_period(requests_list: list, selected_period: str)
         if _is_report_request_in_period(request_item.get("created_at"), selected_period)
     ]
 
-def render_analyst_reports_header(status_options: list, period_options: list):
+def render_analyst_reports_table_card(
+    status_options: list,
+    period_options: list,
+    requests_list: list,
+):
     with st.container():
         st.markdown(
             '<div class="analyst-report-card-anchor"></div>',
@@ -1106,7 +1110,7 @@ def render_analyst_reports_header(status_options: list, period_options: list):
             )
 
         with status_col:
-            selected_status_label = st.selectbox(
+            st.selectbox(
                 "Filtrează după status",
                 options=status_options,
                 index=(
@@ -1119,7 +1123,7 @@ def render_analyst_reports_header(status_options: list, period_options: list):
             )
 
         with period_col:
-            selected_period_label = st.selectbox(
+            st.selectbox(
                 "Filtrează după perioadă",
                 options=period_options,
                 index=(
@@ -1144,7 +1148,7 @@ def render_analyst_reports_header(status_options: list, period_options: list):
             unsafe_allow_html=True,
         )
 
-    return selected_status_label, selected_period_label
+        render_report_requests_table(requests_list)
 
 
 def render_report_requests_table(requests_list: list):
@@ -1196,12 +1200,10 @@ def render_analyst_reports_page():
     if "analyst_report_period_filter" not in st.session_state:
         st.session_state.analyst_report_period_filter = "Toate"
 
-    selected_status_label, selected_period_label = render_analyst_reports_header(
-        status_options,
-        period_options,
-    )
+    selected_status_label = st.session_state.analyst_report_status_filter
+    selected_period_label = st.session_state.analyst_report_period_filter
 
-    selected_status = status_map[selected_status_label]
+    selected_status = status_map.get(selected_status_label, "pending")
 
     result = get_analyst_report_requests(
         access_token=st.session_state.access_token,
@@ -1219,8 +1221,13 @@ def render_analyst_reports_page():
         selected_period_label,
     )
 
-    pending_count = len([item for item in requests_list if item.get("status") == "pending"])
-    completed_count = len([item for item in requests_list if item.get("status") == "completed"])
+    pending_count = len(
+        [item for item in requests_list if item.get("status") == "pending"]
+    )
+
+    completed_count = len(
+        [item for item in requests_list if item.get("status") == "completed"]
+    )
 
     c1, c2, c3 = st.columns(3)
 
@@ -1254,21 +1261,11 @@ def render_analyst_reports_page():
             unsafe_allow_html=True,
         )
 
-    st.markdown(
-        """
-        <div class="analyst-hero analyst-hero-spaced">
-            <div class="analyst-hero-eyebrow">Raportare personalizată</div>
-            <div class="analyst-hero-title">Interpretare financiară asistată de analist</div>
-            <div class="analyst-hero-text">
-                Rapoartele personalizate completează analiza automată a sistemului cu observații,
-                explicații și recomandări adaptate cerinței transmise de client.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_analyst_reports_table_card(
+        status_options=status_options,
+        period_options=period_options,
+        requests_list=requests_list,
     )
-
-    render_report_requests_table(requests_list)
 
     selected_request = st.session_state.get("selected_report_request")
 
