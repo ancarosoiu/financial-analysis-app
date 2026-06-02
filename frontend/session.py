@@ -50,6 +50,8 @@ def logout():
         "company_id",
         "page",
         "selected_review_upload",
+        "selected_report_request",
+        "mobile_menu_open",
         "analyst_flash_message",
         "analyst_flash_type",
         "analyst_upload_status_filter",

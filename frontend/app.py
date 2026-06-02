@@ -1,6 +1,5 @@
 import streamlit as st
 
-from textwrap import dedent
 from session import init_session, logout
 from views.auth import render_auth_page
 from views.client import (

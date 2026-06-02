@@ -603,6 +603,7 @@ def render_add_import_modal():
         if result.get("success"):
             st.success("Importul a fost încărcat și trimis spre validare.")
             st.rerun()
+            return
 
         errors = result.get("errors", {})
         code = errors.get("code")
