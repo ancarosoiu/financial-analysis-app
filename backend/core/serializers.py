@@ -30,7 +30,6 @@ def _validate_full_name(value):
 
     return value
 
-
 def _validate_username(value):
     value = str(value or "").strip()
 
@@ -51,7 +50,6 @@ def _validate_username(value):
 
     return value
 
-
 def _validate_email(value):
     value = str(value or "").strip().lower()
 
@@ -64,7 +62,6 @@ def _validate_email(value):
         raise serializers.ValidationError("Introdu o adresă de email validă.")
 
     return value
-
 
 def _validate_strong_password(value):
     value = str(value or "")
@@ -100,7 +97,6 @@ def _validate_strong_password(value):
         )
 
     return value
-
 
 class RegisterClientSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(write_only=True)
@@ -149,7 +145,6 @@ class RegisterClientSerializer(serializers.ModelSerializer):
 
         return user
 
-
 class RegisterAnalystSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=8)
@@ -196,7 +191,6 @@ class RegisterAnalystSerializer(serializers.ModelSerializer):
         )
 
         return user
-
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

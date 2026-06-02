@@ -3,9 +3,10 @@ import joblib
 import pandas as pd
 import numpy as np
 import shap
+from .models import MLModelVersion
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from .models import MLModelVersion
+
 
 def get_trained_model():
     active_model = MLModelVersion.objects.filter(is_active=True).first()
