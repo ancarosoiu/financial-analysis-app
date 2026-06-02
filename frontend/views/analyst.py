@@ -17,7 +17,6 @@ from api import (
 
 from views.styles import load_analyst_styles
 
-
 def _status_label(status: str):
     labels = {
         "pending": "În așteptare",
@@ -25,7 +24,6 @@ def _status_label(status: str):
         "rejected": "Respins",
     }
     return labels.get(status, status)
-
 
 def _status_badge(status: str):
     label = _status_label(status)
@@ -39,19 +37,15 @@ def _status_badge(status: str):
 
     return f'<span class="status-badge {css_class}">{label}</span>'
 
-
 def _close_review_modal():
     st.session_state.selected_review_upload = None
-
 
 def _clear_review_modal_on_filter_change():
     st.session_state.selected_review_upload = None
 
-
 def _set_flash_message(message: str, message_type: str = "success"):
     st.session_state.analyst_flash_message = message
     st.session_state.analyst_flash_type = message_type
-
 
 def _show_flash_message():
     message = st.session_state.pop("analyst_flash_message", None)
@@ -67,7 +61,6 @@ def _show_flash_message():
     else:
         st.error(message)
 
-
 def _render_analyst_header(title: str, subtitle: str):
     st.markdown(
         f"""
@@ -81,7 +74,6 @@ def _render_analyst_header(title: str, subtitle: str):
         unsafe_allow_html=True,
     )
 
-
 def _analyst_stat_card(title: str, value, caption: str):
     return f"""
     <div class="analyst-stat-card">
@@ -91,14 +83,12 @@ def _analyst_stat_card(title: str, value, caption: str):
     </div>
     """
 
-
 def _safe_company_value(company: dict, *keys, default="—"):
     for key in keys:
         value = company.get(key)
         if value not in [None, ""]:
             return escape(str(value))
     return default
-
 
 def _render_companies_table(companies: list):
     rows_html = ""
@@ -167,7 +157,6 @@ def _render_companies_table(companies: list):
     """
 
     st.html(table_html)
-
 
 @st.dialog("Verificare import financiar", width="large")
 def render_review_import_modal(upload: dict):
@@ -358,7 +347,6 @@ def render_review_import_modal(upload: dict):
         )
         st.rerun()
 
-
 def render_upload_actions(upload: dict):
     upload_id = upload.get("id")
     status = upload.get("status")
@@ -416,7 +404,6 @@ def render_upload_actions(upload: dict):
             """,
             unsafe_allow_html=True,
         )
-
 
 def render_upload_row(upload: dict):
     status = upload.get("status")
@@ -480,7 +467,6 @@ def render_upload_row(upload: dict):
         '<div class="analyst-import-row-divider"></div>',
         unsafe_allow_html=True,
     )
-
 
 def render_analyst_imports_header(status_options: list):
     with st.container():
@@ -547,7 +533,6 @@ def render_uploads_table(uploads: list):
     for upload in uploads:
         render_upload_row(upload)
 
-
 def render_analyst_imports_page():
     load_analyst_styles()
 
@@ -592,7 +577,6 @@ def render_analyst_imports_page():
         render_review_import_modal(selected_upload)
     else:
         st.session_state.selected_review_upload = None
-
 
 def render_analyst_portfolio_page():
     load_analyst_styles()
@@ -694,7 +678,6 @@ def _report_status_label(status: str):
     }
     return labels.get(status, status or "—")
 
-
 def _report_status_badge(status: str):
     label = _report_status_label(status)
 
@@ -707,21 +690,17 @@ def _report_status_badge(status: str):
 
     return f'<span class="status-badge {css_class}">{label}</span>'
 
-
 def _close_report_modal():
     st.session_state.selected_report_request = None
 
-
 def _clear_report_modal_on_filter_change():
     st.session_state.selected_report_request = None
-
 
 def _short_text(text: str, limit: int = 120):
     text = str(text or "").strip()
     if len(text) <= limit:
         return text
     return text[:limit].rstrip() + "..."
-
 
 @st.dialog("Gestionare raport personalizat", width="large")
 def render_manage_report_request_modal(request_item: dict):
@@ -919,7 +898,6 @@ def render_manage_report_request_modal(request_item: dict):
 
         st.error(result.get("message", "Raportul personalizat nu a putut fi finalizat."))
 
-
 def render_report_request_actions(request_item: dict):
     status = request_item.get("status")
     request_id = request_item.get("id")
@@ -964,7 +942,6 @@ def render_report_request_actions(request_item: dict):
     ):
         st.session_state.selected_report_request = request_item
         st.rerun()
-
 
 def render_report_request_row(request_item: dict):
     status = request_item.get("status")
@@ -1044,7 +1021,6 @@ def _parse_ro_date_for_reports(value):
 
     return None
 
-
 def _is_report_request_in_period(value, selected_period: str):
     parsed_date = _parse_ro_date_for_reports(value)
 
@@ -1073,18 +1049,13 @@ def _is_report_request_in_period(value, selected_period: str):
 
     return True
 
-
 def _filter_report_requests_by_period(requests_list: list, selected_period: str):
     return [
         request_item for request_item in requests_list
         if _is_report_request_in_period(request_item.get("created_at"), selected_period)
     ]
 
-def render_analyst_reports_table_card(
-    status_options: list,
-    period_options: list,
-    requests_list: list,
-):
+def render_analyst_reports_table_card(status_options: list,period_options: list,requests_list: list,):
     with st.container():
         st.markdown(
             '<div class="analyst-report-card-anchor"></div>',
@@ -1149,7 +1120,6 @@ def render_analyst_reports_table_card(
         )
 
         render_report_requests_table(requests_list)
-
 
 def render_report_requests_table(requests_list: list):
     if not requests_list:

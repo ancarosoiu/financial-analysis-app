@@ -1,4 +1,3 @@
-import os
 from django.utils import timezone
 
 def company_directory_path(instance, filename):

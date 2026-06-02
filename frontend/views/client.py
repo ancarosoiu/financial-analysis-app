@@ -18,12 +18,6 @@ from api import (
     download_custom_report,
 )
 
-from views.styles import (
-    metric_card,
-    status_pill,
-)
-
-
 def _safe_float(value, default=0.0):
     try:
         if value is None:
@@ -31,7 +25,6 @@ def _safe_float(value, default=0.0):
         return float(value)
     except Exception:
         return default
-
 
 def _init_onboarding_state():
     company_id = st.session_state.get("company_id")
@@ -50,7 +43,6 @@ def _init_onboarding_state():
 
     if "onboarding_uploaded_file" not in st.session_state:
         st.session_state.onboarding_uploaded_file = ""
-
 
 def _render_onboarding_styles_override():
     st.markdown(
@@ -76,7 +68,6 @@ def _render_onboarding_styles_override():
         """,
         unsafe_allow_html=True,
     )
-
 
 def render_stepper(step: int):
     steps = [
@@ -114,7 +105,6 @@ def render_stepper(step: int):
     html += "</div>"
 
     st.markdown(html, unsafe_allow_html=True)
-
 
 def render_company_step():
     st.markdown(
@@ -220,7 +210,6 @@ def render_company_step():
         else:
             st.error(result.get("message", "Datele companiei nu au putut fi salvate."))
             return
-
 
 def render_upload_step():
     st.html(
@@ -394,7 +383,6 @@ def render_upload_history():
     df = pd.DataFrame(data)
     st.dataframe(df, use_container_width=True, hide_index=True)
 
-
 def render_client_onboarding():
     _render_onboarding_styles_override()
     _init_onboarding_state()
@@ -416,7 +404,6 @@ def _upload_status_label(status: str):
     }
     return labels.get(status, status)
 
-
 def _upload_status_badge(status: str):
     label = _upload_status_label(status)
 
@@ -428,7 +415,6 @@ def _upload_status_badge(status: str):
         css_class = "client-import-status-pending"
 
     return f'<span class="client-import-status-badge {css_class}">{label}</span>'
-
 
 def _clean_rejection_reason(reason):
     if not reason:
@@ -446,7 +432,6 @@ def _clean_rejection_reason(reason):
     text = text.strip().strip("'").strip('"')
     text = text.replace("\\n", "\n")
     return text.strip()
-
 
 def _friendly_column_name(column_name):
     labels = {
@@ -482,7 +467,6 @@ def _friendly_column_name(column_name):
     clean_name = str(column_name).strip().strip("'").strip('"').strip()
     return labels.get(clean_name, clean_name)
 
-
 def _extract_missing_columns(reason):
     text = _clean_rejection_reason(reason)
 
@@ -504,7 +488,6 @@ def _extract_missing_columns(reason):
         for col in after.split(",")
         if col.strip()
     ]
-
 
 def _rejection_summary(reason):
     text = _clean_rejection_reason(reason)
@@ -536,7 +519,6 @@ def _rejection_summary(reason):
         "details": [text],
         "type": "text",
     }
-
 
 @st.dialog("Adauga import nou", width="large")
 def render_add_import_modal():
@@ -675,7 +657,6 @@ def render_client_rejection_details_modal(upload: dict):
             unsafe_allow_html=True,
         )
 
-
 def render_client_import_row(upload: dict):
     status = upload.get("status")
     file_name = escape(str(upload.get("nume_fisier") or "Fișier necunoscut"))
@@ -788,7 +769,6 @@ def render_client_import_row(upload: dict):
                 )
 
     st.markdown('<div class="client-import-row-divider"></div>', unsafe_allow_html=True)
-
 
 def render_client_imports_table(uploads: list):
     if not uploads:
@@ -927,32 +907,25 @@ def _fmt_money(value):
     value = _safe_float(value)
     return f"{value:,.0f} RON"
 
-
 def _fmt_percent(value):
     value = _safe_float(value)
     return f"{value * 100:.1f}%"
 
-
 def _normalize_risk(value):
     value = _safe_float(value)
 
-    # Dacă modelul returnează 0.12, îl tratăm ca 12%.
-    # Dacă returnează deja 12.0, îl păstrăm.
     if 0 <= value <= 1:
         return value * 100
 
     return value
 
-
 def _fmt_percent_direct(value):
     value = _normalize_risk(value)
     return f"{value:.1f}%"
 
-
 def _fmt_ratio(value):
     value = _safe_float(value)
     return f"{value:.2f}"
-
 
 def _get_delta(current, previous):
     current = _safe_float(current)
@@ -963,14 +936,12 @@ def _get_delta(current, previous):
 
     return ((current - previous) / abs(previous)) * 100
 
-
 def _fmt_delta(delta):
     if delta is None:
         return "N/A"
 
     sign = "+" if delta >= 0 else ""
     return f"{sign}{delta:.1f}%"
-
 
 def _risk_level(risk):
     risk = _normalize_risk(risk)
@@ -980,7 +951,6 @@ def _risk_level(risk):
     if risk < 60:
         return "Risc mediu", "risk-medium"
     return "Risc ridicat", "risk-high"
-
 
 def _risk_page_level(risk):
     risk = _normalize_risk(risk)
@@ -1089,12 +1059,10 @@ def _get_shap_rows(shap_data, key):
 
     return rows
 
-
 def _fmt_shap_value(value):
     value = _safe_float(value)
     sign = "+" if value > 0 else ""
     return f"{sign}{value:.4f}"
-
 
 def _fmt_feature_value(value):
     value = _safe_float(value)
@@ -1104,14 +1072,12 @@ def _fmt_feature_value(value):
 
     return f"{value:.4f}"
 
-
 def _shap_direction_text(direction):
     if direction == "increase_risk":
         return "Crește riscul"
     if direction == "reduce_risk":
         return "Reduce riscul"
     return "Impact neutru"
-
 
 def _render_shap_factor_card(title, subtitle, factors, card_type):
     if not factors:
@@ -1151,7 +1117,6 @@ def _render_shap_factor_card(title, subtitle, factors, card_type):
     html += "</div>"
     return html
 
-
 def render_dashboard_card(title, value, subtitle, delta=None, accent="blue"):
     delta_html = ""
 
@@ -1174,7 +1139,6 @@ def render_dashboard_card(title, value, subtitle, delta=None, accent="blue"):
 </div>
 """
 
-
 def _risk_metric_card(title, value, subtitle, accent="blue"):
     return f"""
 <div class="risk-metric-card accent-{accent}">
@@ -1184,13 +1148,11 @@ def _risk_metric_card(title, value, subtitle, accent="blue"):
 </div>
 """
 
-
 PLOTLY_CONFIG = {
     "displayModeBar": False,
     "scrollZoom": False,
     "doubleClick": "reset",
 }
-
 
 def _apply_dark_chart_layout(fig, height=360):
     fig.update_layout(
@@ -1328,7 +1290,6 @@ def _render_client_imports_styles_override():
         unsafe_allow_html=True,
     )
 
-
 def _get_period_delta(df, months):
     if len(df) <= 1:
         return None
@@ -1343,14 +1304,12 @@ def _get_period_delta(df, months):
 
     return current - start
 
-
 def _fmt_risk_delta(delta):
     if delta is None:
         return "N/A"
 
     sign = "+" if delta >= 0 else ""
     return f"{sign}{delta:.1f} pp"
-
 
 def _risk_delta_label(delta):
     if delta is None:
@@ -1361,7 +1320,6 @@ def _risk_delta_label(delta):
     if delta > 0:
         return "Risc în creștere"
     return "Risc stabil"
-
 
 def render_client_risk_page():
     _render_client_dashboard_styles_override()
@@ -1730,7 +1688,6 @@ def render_client_risk_page():
 </div>
 """
     )
-
 
 def render_client_dashboard():
     _render_client_dashboard_styles_override()
@@ -2117,7 +2074,6 @@ def _client_report_status_label(status: str):
     }
     return labels.get(status, status or "—")
 
-
 def _client_report_status_badge(status: str):
     label = _client_report_status_label(status)
 
@@ -2130,7 +2086,6 @@ def _client_report_status_badge(status: str):
 
     return f'<span class="client-report-status-badge {css_class}">{label}</span>'
 
-
 def _fmt_report_probability(value):
     try:
         value = float(value)
@@ -2138,7 +2093,6 @@ def _fmt_report_probability(value):
         return "N/A"
 
     return f"{value:.2f}%"
-
 
 @st.dialog("Solicitare raport personalizat", width="large")
 def render_client_report_request_modal(standard_reports: list):
@@ -2328,7 +2282,6 @@ def render_client_standard_report_row(report: dict):
 
     st.markdown('<div class="client-report-row-divider"></div>', unsafe_allow_html=True)
 
-
 def render_client_standard_reports_section(reports: list, period_options: list):
     with st.container():
         st.markdown(
@@ -2471,7 +2424,6 @@ def render_client_custom_request_row(request_item: dict):
 
     st.markdown('<div class="client-report-row-divider"></div>', unsafe_allow_html=True)
 
-
 def render_client_custom_requests_section(requests_list: list):
     st.markdown(
         """
@@ -2530,7 +2482,6 @@ def _parse_ro_date(value):
 
     return None
 
-
 def _is_in_selected_period(value, selected_period: str):
     parsed_date = _parse_ro_date(value)
 
@@ -2559,13 +2510,11 @@ def _is_in_selected_period(value, selected_period: str):
 
     return True
 
-
 def _filter_standard_reports_by_period(reports: list, selected_period: str):
     return [
         report for report in reports
         if _is_in_selected_period(report.get("data_bilant"), selected_period)
     ]
-
 
 def _filter_custom_requests_by_period(requests_list: list, selected_period: str):
     return [

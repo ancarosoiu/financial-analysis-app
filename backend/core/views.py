@@ -1,20 +1,44 @@
-from django.utils import timezone
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.permissions import AllowAny
-from rest_framework import status, generics
-from .models import Company, FinancialUpload, Notification, BaseReport, ReportRequest, CustomReport, KPISnapshot, MLModelVersion
-from .serializers import RegisterClientSerializer, RegisterAnalystSerializer,MyTokenObtainPairSerializer
-from .services import process_financial_upload, auto_assign_analyst, validate_upload_before_analyst,generate_standard_report_pdf,generate_custom_report_pdf
-from django.db.models import Case, When, IntegerField
+import os
+import re
+import unicodedata
 from datetime import timedelta
-from django.http import FileResponse
-import os, re, unicodedata
+
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email as django_validate_email
+from django.db.models import Case, IntegerField, When
+from django.http import FileResponse
+from django.utils import timezone
+
+from rest_framework import generics, status
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .models import (
+    BaseReport,
+    Company,
+    CustomReport,
+    FinancialUpload,
+    KPISnapshot,
+    MLModelVersion,
+    Notification,
+    ReportRequest,
+)
+from .serializers import (
+    MyTokenObtainPairSerializer,
+    RegisterAnalystSerializer,
+    RegisterClientSerializer,
+)
+from .services import (
+    auto_assign_analyst,
+    generate_custom_report_pdf,
+    generate_standard_report_pdf,
+    process_financial_upload,
+    validate_upload_before_analyst,
+)
 
 def _clean_filename_part(value):
     value = str(value or "").strip()

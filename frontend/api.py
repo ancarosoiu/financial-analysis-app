@@ -57,7 +57,6 @@ def _format_backend_error(data):
 
     return str(data)
 
-
 def handle_response(response):
     try:
         data = response.json()
@@ -77,11 +76,11 @@ def handle_response(response):
         "success": True,
         "data": data,
     }
+
 def auth_headers(access_token: str):
     return {
         "Authorization": f"Bearer {access_token}"
     }
-
 
 def login_request(username: str, password: str):
     url = f"{BASE_URL}/token/"
@@ -107,7 +106,6 @@ def login_request(username: str, password: str):
             "success": False,
             "message": "Nu s-a putut realiza conexiunea cu backend-ul."
         }
-
 
 def register_client(payload: dict):
     url = f"{BASE_URL}/register/client/"
@@ -135,7 +133,6 @@ def create_company(payload: dict, access_token: str):
             "success": False,
             "message": "Compania nu a putut fi creată."
         }
-
 
 def get_client_dashboard(company_id: int, access_token: str):
     url = f"{BASE_URL}/companies/{company_id}/dashboard/"
@@ -214,7 +211,6 @@ def upload_financial_file(company_id: int, file, access_token: str):
             "message": "Fișierul nu a putut fi încărcat."
         }
 
-
 def get_upload_history(company_id: int, access_token: str):
     url = f"{BASE_URL}/companies/{company_id}/uploads/"
     try:
@@ -225,7 +221,6 @@ def get_upload_history(company_id: int, access_token: str):
             "success": False,
             "message": "Istoricul importurilor nu a putut fi încărcat."
         }
-
 
 def get_analyst_dashboard_stats(access_token: str):
     url = f"{BASE_URL}/analyst/dashboard-stats/"
@@ -238,7 +233,6 @@ def get_analyst_dashboard_stats(access_token: str):
             "message": "Nu s-au putut încărca statisticile analistului."
         }
 
-
 def get_companies(access_token: str):
     url = f"{BASE_URL}/companies/"
     try:
@@ -249,7 +243,6 @@ def get_companies(access_token: str):
             "success": False,
             "message": "Lista companiilor nu a putut fi încărcată."
         }
-
 
 def get_analyst_pending_uploads(access_token: str):
     url = f"{BASE_URL}/analyst/uploads/pending/"
@@ -324,7 +317,6 @@ def get_standard_reports(company_id: int, access_token: str):
             "message": "Rapoartele standard nu au putut fi încărcate.",
         }
 
-
 def download_standard_report(report_id: int, access_token: str):
     url = f"{BASE_URL}/reports/standard/{report_id}/download/"
 
@@ -367,13 +359,7 @@ def download_standard_report(report_id: int, access_token: str):
             "message": "Nu s-a putut realiza descărcarea raportului standard.",
         }
 
-
-def create_report_request(
-    company_id: int,
-    message: str,
-    access_token: str,
-    base_report_id: int | None = None,
-):
+def create_report_request(company_id: int,message: str,access_token: str,base_report_id: int | None = None,):
     url = f"{BASE_URL}/companies/{company_id}/reports/request/"
 
     payload = {
@@ -413,7 +399,6 @@ def get_client_report_requests(company_id: int, access_token: str):
             "message": "Solicitările de rapoarte nu au putut fi încărcate.",
         }
 
-
 def get_analyst_report_requests(access_token: str, status: str = "pending"):
     url = f"{BASE_URL}/analyst/reports/requests/"
     params = {
@@ -435,14 +420,7 @@ def get_analyst_report_requests(access_token: str, status: str = "pending"):
             "message": "Solicitările de rapoarte nu au putut fi încărcate.",
         }
 
-
-def fulfill_report_request(
-    request_id: int,
-    analyst_message: str,
-    recommendations: str,
-    access_token: str,
-    extra_data: dict | None = None,
-):
+def fulfill_report_request(request_id: int,analyst_message: str,recommendations: str,access_token: str,extra_data: dict | None = None,):
     url = f"{BASE_URL}/reports/requests/{request_id}/fulfill/"
 
     payload = {
@@ -465,7 +443,6 @@ def fulfill_report_request(
             "success": False,
             "message": "Raportul personalizat nu a putut fi finalizat.",
         }
-
 
 def download_custom_report(report_id: int, access_token: str):
     url = f"{BASE_URL}/reports/custom/{report_id}/download/"

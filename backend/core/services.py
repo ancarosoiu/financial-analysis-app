@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 
 from .ml_service import predict_risk
-from .models import FinancialUpload, FinancialStatement, KPISnapshot, BaseReport
+from .models import FinancialStatement, KPISnapshot, BaseReport
 
 FRIENDLY_COLUMN_NAMES = {
     "reporting_date": "Data raportării",
@@ -770,35 +770,18 @@ def process_financial_upload(upload_instance):
     try:
         onboarding_needed = not upload_instance.company.is_onboarded
 
-        print("=" * 80)
-        print(f"DEBUG PROCESS UPLOAD ID: {upload_instance.id}")
-        print(f"DEBUG COMPANY: {upload_instance.company.name}")
-        print(f"DEBUG ONBOARDING NEEDED: {onboarding_needed}")
-        print(f"DEBUG FILE PATH: {upload_instance.file.path}")
-        print("=" * 80)
-
         df_raw = validate_and_parse_financial_excel(
             upload_instance.file.path,
             is_onboarding=onboarding_needed
         )
 
-        print("DEBUG PAS 1 OK: fișier validat și citit.")
-        print(f"DEBUG ROWS: {len(df_raw)}")
-        print(f"DEBUG COLUMNS: {list(df_raw.columns)}")
-
         df_kpi = calculate_kpis(df_raw)
-
-        print("DEBUG PAS 2 OK: KPI calculați.")
-        print(f"DEBUG KPI COLUMNS EXIST: {[f'x{i}' for i in range(1, 67) if f'x{i}' in df_kpi.columns]}")
 
         save_calculated_data(
             upload_instance.company,
             upload_instance,
             df_kpi
         )
-
-        print("DEBUG PAS 3 OK: date salvate, predicții generate, import aprobat.")
-        print("=" * 80)
 
         return True, "Procesare reușită."
 
@@ -813,11 +796,6 @@ def process_financial_upload(upload_instance):
         upload_instance.processed_at = timezone.now()
         upload_instance.save()
 
-        print("=" * 80)
-        print("DEBUG VALIDATION ERROR ÎN PROCESS_FINANCIAL_UPLOAD:")
-        print(error_message)
-        print("=" * 80)
-
         return False, error_message
 
     except Exception as e:
@@ -831,11 +809,6 @@ def process_financial_upload(upload_instance):
         return False, error_message
 
 def _pdf_text(value):
-    """
-    Normalizeaza textul pentru PDF.
-    Folosim varianta fara diacritice ca sa evitam patratelele generate de fonturile standard ReportLab.
-    """
-
     if value is None:
         return ""
 
@@ -856,13 +829,11 @@ def _pdf_text(value):
 
     return text
 
-
 def _pdf_paragraph(value):
     text = _pdf_text(value)
     text = xml_escape(text)
     text = text.replace("\n", "<br/>")
     return text
-
 
 def _fmt_report_value(value, suffix=""):
     if value is None:
@@ -878,10 +849,8 @@ def _fmt_report_value(value, suffix=""):
 
     return f"{value:,.2f}"
 
-
 def _fmt_report_money(value):
     return f"{_fmt_report_value(value)} RON"
-
 
 def _risk_interpretation(probability):
     try:
@@ -905,7 +874,6 @@ def _risk_interpretation(probability):
         "Risc ridicat",
         "Compania prezinta semnale financiare importante, care necesita analiza suplimentara si masuri de corectie."
     )
-
 
 def _build_pdf_document(title):
     buffer = BytesIO()
@@ -987,7 +955,6 @@ def _build_pdf_document(title):
 
     return buffer, doc, styles
 
-
 def _mono_table(rows, col_widths=None):
     if col_widths is None:
         col_widths = [7.5 * cm, 7.5 * cm]
@@ -1022,21 +989,13 @@ def _mono_table(rows, col_widths=None):
 
     return table
 
-
 def _metadata_table(rows):
     return _mono_table(
         rows,
         col_widths=[5.0 * cm, 10.0 * cm],
     )
 
-
 def generate_standard_report_pdf(base_report):
-    """
-    Genereaza raportul standard in format PDF.
-    Template-ul este alb-negru, sobru si fara diacritice, pentru compatibilitate sigura cu ReportLab.
-    PDF-ul se regenereaza la download ca sa foloseasca mereu template-ul curent.
-    """
-
     if base_report.pdf_file:
         base_report.pdf_file.delete(save=False)
 
@@ -1185,7 +1144,6 @@ def generate_standard_report_pdf(base_report):
     buffer.close()
 
     return base_report
-
 
 def generate_custom_report_pdf(custom_report):
     if custom_report.pdf_file:

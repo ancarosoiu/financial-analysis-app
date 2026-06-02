@@ -44,7 +44,6 @@ def render_login_form():
 
         st.error(result.get("message", "Autentificarea a eșuat."))
 
-
 def render_register_form():
 
     with st.form("register_form", clear_on_submit=False):
@@ -115,7 +114,6 @@ def render_register_form():
             st.success("Cont client creat cu succes. Acum te poți autentifica.")
         else:
             st.error(result.get("message", "Înregistrarea a eșuat."))
-
 
 def render_auth_page():
     left_col, right_col = st.columns([1.05, 1], gap="large")
