@@ -37,7 +37,7 @@ def load_uci_data(folder_path):
     return full_df
 
 def apply_feature_engineering(df):
-    print("FAcem feature engineering pentru x65 si x66...")
+    print("Facem feature engineering pentru x65 si x66...")
     df['x65'] = df['x6'] / df['x2'].replace(0, 0.001)
     df['x66'] = df['x11'] / df['x3'].replace(0, 0.001)
 
